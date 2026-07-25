@@ -6,6 +6,8 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -23,67 +25,84 @@ const SignUpScreen = () => {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}> 
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 20 }]}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.hero}>
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Set up your account and personalize your support.</Text>
-        </View>
-
-        <View style={styles.formCard}>
-          <View style={styles.inputWrap}>
-            <Ionicons name="mail-outline" size={18} color="#8A6A57" />
-            <TextInput
-              style={styles.input}
-              placeholder="Email"
-              placeholderTextColor="#8F7B6D"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
-
-          <View style={styles.inputWrap}>
-            <Ionicons name="lock-closed-outline" size={18} color="#8A6A57" />
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              placeholderTextColor="#8F7B6D"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
-          </View>
-
-          <View style={styles.inputWrap}>
-            <Ionicons name="checkmark-circle-outline" size={18} color="#8A6A57" />
-            <TextInput
-              style={styles.input}
-              placeholder="Confirm Password"
-              placeholderTextColor="#8F7B6D"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-            />
-          </View>
-
-          <TouchableOpacity style={styles.button} onPress={handleSignUp}>
-            <Text style={styles.buttonText}>Sign Up</Text>
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity
-          style={styles.linkButton}
-          onPress={() => navigation.navigate("SignIn")}
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: insets.bottom + 20 },
+          ]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.linkText}>Already have an account? Sign In</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </View>
+          <View style={styles.hero}>
+            <Text style={styles.title}>Create Account</Text>
+            <Text style={styles.subtitle}>
+              Set up your account and personalize your support.
+            </Text>
+          </View>
+
+          <View style={styles.formCard}>
+            <View style={styles.inputWrap}>
+              <Ionicons name="mail-outline" size={18} color="#8A6A57" />
+              <TextInput
+                style={styles.input}
+                placeholder="Email"
+                placeholderTextColor="#8F7B6D"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+
+            <View style={styles.inputWrap}>
+              <Ionicons name="lock-closed-outline" size={18} color="#8A6A57" />
+              <TextInput
+                style={styles.input}
+                placeholder="Password"
+                placeholderTextColor="#8F7B6D"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+              />
+            </View>
+
+            <View style={styles.inputWrap}>
+              <Ionicons
+                name="checkmark-circle-outline"
+                size={18}
+                color="#8A6A57"
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Confirm Password"
+                placeholderTextColor="#8F7B6D"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry
+              />
+            </View>
+
+            <TouchableOpacity style={styles.button} onPress={handleSignUp}>
+              <Text style={styles.buttonText}>Sign Up</Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            style={styles.linkButton}
+            onPress={() => navigation.navigate("SignIn")}
+          >
+            <Text style={styles.linkText}>
+              Already have an account? Sign In
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    </KeyboardAvoidingView>
   );
 };
 

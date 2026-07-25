@@ -38,6 +38,8 @@ import NotificationSettingsScreen from "./screen/NotificationSettingsScreen";
 import DataStorageScreen from "./screen/DataStorageScreen";
 import HelpSupportScreen from "./screen/HelpSupportScreen";
 import AboutTruSolutionScreen from "./screen/AboutTruSolutionScreen";
+import ResourceLibraryScreen from "./screen/ResourceLibraryScreen";
+import JournalScreen from "./screen/JournalScreen";
 import TabNavigator from "./TabNavigator";
 import { CommunityProvider } from "./context/CommunityContext";
 import { AppointmentProvider } from "./context/AppointmentContext";
@@ -62,7 +64,10 @@ export default function App() {
               <Stack.Screen name="Onboarding3" component={OnboardingScreen3} />
               <Stack.Screen name="SignUp" component={SignUpScreen} />
               <Stack.Screen name="SignIn" component={SignInScreen} />
-              <Stack.Screen name="SelectIssues" component={SelectIssuesScreen} />
+              <Stack.Screen
+                name="SelectIssues"
+                component={SelectIssuesScreen}
+              />
               <Stack.Screen
                 name="WelcomeAboard"
                 component={WelcomeAboardScreen}
@@ -71,8 +76,14 @@ export default function App() {
                 name="ShareExperience"
                 component={ShareExperienceScreen}
               />
-              <Stack.Screen name="ChatWithPeer" component={ChatWithPeerScreen} />
-              <Stack.Screen name="PeerMatching" component={PeerMatchingScreen} />
+              <Stack.Screen
+                name="ChatWithPeer"
+                component={ChatWithPeerScreen}
+              />
+              <Stack.Screen
+                name="PeerMatching"
+                component={PeerMatchingScreen}
+              />
               <Stack.Screen name="Searching" component={SearchingScreen} />
               <Stack.Screen name="PeerChat" component={PeerChatScreen} />
               <Stack.Screen name="RatePeer" component={RatePeerScreen} />
@@ -105,13 +116,33 @@ export default function App() {
                 name="MoodCheckSuccess"
                 component={MoodCheckSuccessScreen}
               />
-              <Stack.Screen name="MoodProgress" component={MoodProgressScreen} />
-              <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} />
-              <Stack.Screen name="PrivacySettings" component={PrivacySettingsScreen} />
-              <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
+              <Stack.Screen
+                name="MoodProgress"
+                component={MoodProgressScreen}
+              />
+              <Stack.Screen
+                name="AccountSettings"
+                component={AccountSettingsScreen}
+              />
+              <Stack.Screen
+                name="PrivacySettings"
+                component={PrivacySettingsScreen}
+              />
+              <Stack.Screen
+                name="NotificationSettings"
+                component={NotificationSettingsScreen}
+              />
               <Stack.Screen name="DataStorage" component={DataStorageScreen} />
               <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
-              <Stack.Screen name="AboutTruSolution" component={AboutTruSolutionScreen} />
+              <Stack.Screen
+                name="AboutTruSolution"
+                component={AboutTruSolutionScreen}
+              />
+              <Stack.Screen
+                name="ResourceLibrary"
+                component={ResourceLibraryScreen}
+              />
+              <Stack.Screen name="Journal" component={JournalScreen} />
               <Stack.Screen
                 name="MainTabs"
                 component={TabNavigator}
@@ -133,5 +164,3 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 });
-
-

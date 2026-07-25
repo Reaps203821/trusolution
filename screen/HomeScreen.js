@@ -101,17 +101,33 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>Good Morning, User</Text>
-            <Text style={styles.subText}>Take a gentle check-in before your day gets busy.</Text>
+            <Text style={styles.subText}>
+              Take a gentle check-in before your day gets busy.
+            </Text>
           </View>
 
-          <TouchableOpacity
-            onPress={() => navigation.navigate("Settings")}
-            accessibilityRole="button"
-            accessibilityLabel="Open settings"
-            style={styles.headerButton}
-          >
-            <Ionicons name="person" size={22} color="#3D2B1F" />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              onPress={() => navigation.navigate("Journal")}
+              style={styles.headerButton}
+            >
+              <Ionicons name="book-outline" size={22} color="#3D2B1F" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => navigation.navigate("ResourceLibrary")}
+              style={styles.headerButton}
+            >
+              <Ionicons name="library-outline" size={22} color="#3D2B1F" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => navigation.navigate("Settings")}
+              accessibilityRole="button"
+              accessibilityLabel="Open settings"
+              style={styles.headerButton}
+            >
+              <Ionicons name="person" size={22} color="#3D2B1F" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.heroCard}>
@@ -120,13 +136,17 @@ export default function HomeScreen() {
               <Ionicons name="sparkles" size={14} color="#256D3C" />
               <Text style={styles.heroBadgeText}>Daily wellness</Text>
             </View>
-            <TouchableOpacity style={styles.heroMiniButton} onPress={() => openMoodCheck()}>
+            <TouchableOpacity
+              style={styles.heroMiniButton}
+              onPress={() => openMoodCheck()}
+            >
               <Text style={styles.heroMiniButtonText}>Check now</Text>
             </TouchableOpacity>
           </View>
           <Text style={styles.heroTitle}>How are you feeling right now?</Text>
           <Text style={styles.heroSubtitle}>
-            Choose a mood and continue with the support option that matches your energy.
+            Choose a mood and continue with the support option that matches your
+            energy.
           </Text>
           <View style={styles.heroStats}>
             <View style={styles.heroStatCard}>
@@ -164,7 +184,9 @@ export default function HomeScreen() {
         <View style={styles.moodBox}>
           <View style={styles.moodHeader}>
             <Text style={styles.moodTitle}>Quick mood check</Text>
-            <Text style={styles.moodHint}>Tap any mood to open full check-in</Text>
+            <Text style={styles.moodHint}>
+              Tap any mood to open full check-in
+            </Text>
           </View>
           <View style={styles.moodRow}>
             {moods.map((mood) => (
@@ -181,7 +203,9 @@ export default function HomeScreen() {
                     styles.emoji,
                     {
                       opacity: selectedMood === mood.id ? 1 : 0.45,
-                      transform: [{ scale: selectedMood === mood.id ? 1.14 : 1 }],
+                      transform: [
+                        { scale: selectedMood === mood.id ? 1.14 : 1 },
+                      ],
                     },
                   ]}
                 >
@@ -191,7 +215,10 @@ export default function HomeScreen() {
             ))}
           </View>
 
-          <TouchableOpacity style={styles.checkBtn} onPress={() => openMoodCheck()}>
+          <TouchableOpacity
+            style={styles.checkBtn}
+            onPress={() => openMoodCheck()}
+          >
             <Text style={styles.checkText}>Open Mood Check</Text>
             <Ionicons name="arrow-forward" size={16} color="#FFF9F3" />
           </TouchableOpacity>
@@ -270,9 +297,7 @@ export default function HomeScreen() {
                   })
                 }
               >
-                <Text style={styles.upcomingSecondaryButtonText}>
-                  Manage
-                </Text>
+                <Text style={styles.upcomingSecondaryButtonText}>Manage</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -336,6 +361,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
     borderColor: "#ECD8C1",
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   heroCard: {
     backgroundColor: "#7A4B2F",

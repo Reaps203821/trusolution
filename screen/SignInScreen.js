@@ -6,6 +6,8 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -22,59 +24,70 @@ const SignInScreen = () => {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}> 
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 20 }]}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.hero}>
-          <Text style={styles.title}>Welcome Back</Text>
-          <Text style={styles.subtitle}>Sign in to continue your support journey.</Text>
-        </View>
-
-        <View style={styles.formCard}>
-          <View style={styles.inputWrap}>
-            <Ionicons name="mail-outline" size={18} color="#8A6A57" />
-            <TextInput
-              style={styles.input}
-              placeholder="Email"
-              placeholderTextColor="#8F7B6D"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
-
-          <View style={styles.inputWrap}>
-            <Ionicons name="lock-closed-outline" size={18} color="#8A6A57" />
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              placeholderTextColor="#8F7B6D"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
-          </View>
-
-          <TouchableOpacity style={styles.button} onPress={handleSignIn}>
-            <Text style={styles.buttonText}>Sign In</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.inlineButton}>
-            <Text style={styles.inlineText}>Forgot Password?</Text>
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity
-          style={styles.linkButton}
-          onPress={() => navigation.navigate("SignUp")}
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: insets.bottom + 20 },
+          ]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.linkText}>Don't have an account? Sign Up</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </View>
+          <View style={styles.hero}>
+            <Text style={styles.title}>Welcome Back</Text>
+            <Text style={styles.subtitle}>
+              Sign in to continue your support journey.
+            </Text>
+          </View>
+
+          <View style={styles.formCard}>
+            <View style={styles.inputWrap}>
+              <Ionicons name="mail-outline" size={18} color="#8A6A57" />
+              <TextInput
+                style={styles.input}
+                placeholder="Email"
+                placeholderTextColor="#8F7B6D"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+
+            <View style={styles.inputWrap}>
+              <Ionicons name="lock-closed-outline" size={18} color="#8A6A57" />
+              <TextInput
+                style={styles.input}
+                placeholder="Password"
+                placeholderTextColor="#8F7B6D"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+              />
+            </View>
+
+            <TouchableOpacity style={styles.button} onPress={handleSignIn}>
+              <Text style={styles.buttonText}>Sign In</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.inlineButton}>
+              <Text style={styles.inlineText}>Forgot Password?</Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            style={styles.linkButton}
+            onPress={() => navigation.navigate("SignUp")}
+          >
+            <Text style={styles.linkText}>Don't have an account? Sign Up</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    </KeyboardAvoidingView>
   );
 };
 
