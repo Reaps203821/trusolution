@@ -1,4 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, {
   createContext,
   useContext,
@@ -6,8 +5,9 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import { supabase } from "../lib/supabase";
+import { useAuth } from "./AuthContext";
 
-const STORAGE_KEY = "@trusolution/appointments-v1";
 const AppointmentContext = createContext(null);
 
 const buildBookingId = () =>
@@ -22,74 +22,136 @@ const shiftIsoDate = (isoDate, days) => {
   return date.toISOString().slice(0, 10);
 };
 
+const rowToAppointment = (row) => ({
+  id: row.id,
+  bookingId: row.booking_id,
+  therapist: row.therapist,
+  date: row.date,
+  time: row.time,
+  sessionType: row.session_type,
+  status: row.status,
+  createdAt: row.created_at,
+  reminder: {
+    dayBefore: row.reminder_day_before,
+    oneHourBefore: row.reminder_one_hour_before,
+  },
+});
+
 export function AppointmentProvider({ children }) {
+  const { currentUser, isHydrated: isAuthHydrated } = useAuth();
+  const currentUserId = currentUser?.id;
+
   const [appointments, setAppointments] = useState([]);
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
+    let isActive = true;
+
     const restore = async () => {
+      setIsHydrated(false);
+      setAppointments([]);
+
+      if (!isAuthHydrated) {
+        return;
+      }
+
+      if (!currentUserId) {
+        if (isActive) setIsHydrated(true);
+        return;
+      }
+
       try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) {
-            setAppointments(parsed);
-          }
+        const { data, error } = await supabase
+          .from("appointments")
+          .select("*")
+          .eq("user_id", currentUserId)
+          .order("created_at", { ascending: false });
+
+        if (!isActive) return;
+
+        if (error) {
+          console.warn("Unable to restore appointments", error.message);
+        } else if (data) {
+          setAppointments(data.map(rowToAppointment));
         }
       } catch (error) {
         console.warn("Unable to restore appointments", error);
       } finally {
-        setIsHydrated(true);
+        if (isActive) setIsHydrated(true);
       }
     };
+
     restore();
-  }, []);
-
-  useEffect(() => {
-    if (!isHydrated) {
-      return;
-    }
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(appointments)).catch((e) =>
-      console.warn("Unable to save appointments", e),
-    );
-  }, [isHydrated, appointments]);
-
-  const addAppointment = ({ therapist, date, time, sessionType }) => {
-    const newAppointment = {
-      id: `appointment-${Date.now()}`,
-      bookingId: buildBookingId(),
-      therapist,
-      date,
-      time,
-      sessionType,
-      status: "Confirmed",
-      createdAt: new Date().toISOString(),
-      reminder: {
-        dayBefore: true,
-        oneHourBefore: true,
-      },
+    return () => {
+      isActive = false;
     };
+  }, [currentUserId, isAuthHydrated]);
 
+  const addAppointment = async ({ therapist, date, time, sessionType }) => {
+    const { data, error } = await supabase
+      .from("appointments")
+      .insert({
+        user_id: currentUserId,
+        booking_id: buildBookingId(),
+        therapist,
+        date,
+        time,
+        session_type: sessionType,
+        status: "Confirmed",
+        reminder_day_before: true,
+        reminder_one_hour_before: true,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.warn("Unable to create appointment", error.message);
+      return null;
+    }
+
+    const newAppointment = rowToAppointment(data);
     setAppointments((prev) => [newAppointment, ...prev]);
     return newAppointment;
   };
 
-  const cancelAppointment = (appointmentId) => {
+  const cancelAppointment = async (appointmentId) => {
     setAppointments((prev) =>
       prev.map((item) =>
         item.id === appointmentId ? { ...item, status: "Canceled" } : item,
       ),
     );
+
+    const { error } = await supabase
+      .from("appointments")
+      .update({ status: "Canceled" })
+      .eq("id", appointmentId)
+      .eq("user_id", currentUserId);
+
+    if (error) {
+      console.warn("Unable to cancel appointment", error.message);
+    }
   };
 
-  const rescheduleAppointment = (appointmentId, nextDate) => {
+  const rescheduleAppointment = async (appointmentId, nextDate) => {
+    const current = appointments.find((item) => item.id === appointmentId);
+    const resolvedDate =
+      nextDate || (current ? shiftIsoDate(current.date, 1) : nextDate);
+
     setAppointments((prev) =>
       prev.map((item) =>
-        item.id === appointmentId
-          ? { ...item, date: nextDate || shiftIsoDate(item.date, 1) }
-          : item,
+        item.id === appointmentId ? { ...item, date: resolvedDate } : item,
       ),
     );
+
+    const { error } = await supabase
+      .from("appointments")
+      .update({ date: resolvedDate })
+      .eq("id", appointmentId)
+      .eq("user_id", currentUserId);
+
+    if (error) {
+      console.warn("Unable to reschedule appointment", error.message);
+    }
   };
 
   const getAppointmentById = (appointmentId) =>
@@ -108,7 +170,7 @@ export function AppointmentProvider({ children }) {
       rescheduleAppointment,
       getAppointmentById,
     }),
-    [appointments, upcomingAppointment, isHydrated],
+    [appointments, upcomingAppointment, isHydrated, currentUserId],
   );
 
   return (

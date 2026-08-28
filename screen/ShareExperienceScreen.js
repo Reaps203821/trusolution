@@ -51,7 +51,7 @@ export default function ShareExperienceScreen() {
     setIsLoading(true);
     await new Promise((resolve) => setTimeout(resolve, 600));
 
-    addPost({
+    const newPost = await addPost({
       title,
       experience,
       topics: selectedTopics.length ? selectedTopics : ["Other"],
@@ -59,6 +59,14 @@ export default function ShareExperienceScreen() {
     });
 
     setIsLoading(false);
+
+    if (!newPost) {
+      Alert.alert(
+        "Something went wrong",
+        "We couldn't post your experience. Please try again.",
+      );
+      return;
+    }
 
 Alert.alert("Posted", "Your experience has been added to the community feed.", [
       {

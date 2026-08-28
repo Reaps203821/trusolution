@@ -55,10 +55,10 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <ChatProvider>
-          <CommunityProvider>
-            <AppointmentProvider>
-              <WellnessProvider>
+        <WellnessProvider>
+          <ChatProvider>
+            <CommunityProvider>
+              <AppointmentProvider>
                 <NavigationContainer>
                   <StatusBar style="auto" />
                   <Stack.Navigator
@@ -205,10 +205,10 @@ export default function App() {
                     />
                   </Stack.Navigator>
                 </NavigationContainer>
-              </WellnessProvider>
-            </AppointmentProvider>
-          </CommunityProvider>
-        </ChatProvider>
+              </AppointmentProvider>
+            </CommunityProvider>
+          </ChatProvider>
+        </WellnessProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

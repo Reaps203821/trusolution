@@ -6,21 +6,37 @@ import {
   TouchableOpacity,
   SafeAreaView,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { supabase } from "../lib/supabase";
+import { useAuth } from "../context/AuthContext";
 
 const RoleSelection = () => {
   const navigation = useNavigation();
+  const { currentUser } = useAuth();
   const [selectedRole, setSelectedRole] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   const handleContinue = async () => {
-    if (!selectedRole) {
+    if (!selectedRole || !currentUser?.id) {
       return;
     }
 
+    setIsSaving(true);
+    setSaveError("");
+
     try {
-      await AsyncStorage.setItem("userRole", selectedRole);
+      const { error } = await supabase
+        .from("profiles")
+        .update({ role: selectedRole })
+        .eq("id", currentUser.id);
+
+      if (error) {
+        console.log("Error saving user role:", error.message);
+        setSaveError("Couldn't save your choice. Please try again.");
+        return;
+      }
 
       if (selectedRole === "user") {
         navigation.replace("SelectIssues");
@@ -32,6 +48,9 @@ const RoleSelection = () => {
       }
     } catch (error) {
       console.log("Error saving user role:", error);
+      setSaveError("Couldn't save your choice. Please try again.");
+    } finally {
+      setIsSaving(false);
     }
   };
   
@@ -104,12 +123,19 @@ const RoleSelection = () => {
           </TouchableOpacity>
         </View>
 
+        {saveError ? <Text style={styles.errorText}>{saveError}</Text> : null}
+
         <TouchableOpacity
-          style={[styles.button, !selectedRole && styles.buttonDisabled]}
+          style={[
+            styles.button,
+            (!selectedRole || isSaving) && styles.buttonDisabled,
+          ]}
           onPress={handleContinue}
-          disabled={!selectedRole}
+          disabled={!selectedRole || isSaving}
         >
-          <Text style={styles.buttonText}>Continue</Text>
+          <Text style={styles.buttonText}>
+            {isSaving ? "Saving..." : "Continue"}
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -219,6 +245,14 @@ const styles = StyleSheet.create({
 
   buttonDisabled: {
     backgroundColor: "#B8A583",
+  },
+
+  errorText: {
+    color: "#B3261E",
+    fontSize: 13,
+    fontWeight: "600",
+    textAlign: "center",
+    marginBottom: 12,
   },
 
   buttonText: {

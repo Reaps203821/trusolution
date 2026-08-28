@@ -1,4 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, {
   createContext,
   useContext,
@@ -6,149 +5,224 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import { supabase } from "../lib/supabase";
+import { useAuth } from "./AuthContext";
+import { useWellness } from "./WellnessContext";
 
-const STORAGE_KEY = "@trusolution/community-posts-v1";
 const CommunityContext = createContext(null);
 
-const starterPosts = [
-  {
-    id: "post-1",
-    author: "Ada",
-    isAnonymous: false,
-    title: "A small win today",
-    experience:
-      "I finally took a short walk after staying indoors for days. It felt small, but I am proud of it.",
-    topics: ["Self-care", "Motivation"],
-    createdAt: "Community starter",
-    liked: false,
-    likes: 18,
-    reaction: null,
-    comments: [
-      {
-        id: "comment-1",
-        author: "Mira",
-        text: "That is a real win. Small steps count.",
-      },
-    ],
-  },
-  {
-    id: "post-2",
-    author: "Anonymous",
-    isAnonymous: true,
-    title: "Trying to manage stress better",
-    experience:
-      "Work has been heavy lately, but I am learning to pause before I spiral. Breathing exercises helped this week.",
-    topics: ["Stress", "Work"],
-    createdAt: "Community starter",
-    liked: true,
-    likes: 27,
-    reaction: "support",
-    comments: [
-      {
-        id: "comment-2",
-        author: "Jay",
-        text: "Thanks for sharing this. Needed the reminder.",
-      },
-      {
-        id: "comment-3",
-        author: "Nora",
-        text: "Breathing exercises help me too.",
-      },
-    ],
-  },
-];
+const commentRowToComment = (row) => ({
+  id: row.id,
+  author: row.display_name || (row.is_anonymous ? "Anonymous" : "Member"),
+  text: row.content,
+});
+
+const rowToPost = ({ post, likesForPost, currentUserId }) => {
+  const myLikeRow = likesForPost.find((l) => l.user_id === currentUserId);
+  return {
+    id: post.id,
+    author: post.display_name || (post.is_anonymous ? "Anonymous" : "Member"),
+    isAnonymous: post.is_anonymous,
+    title: post.title || "",
+    experience: post.content,
+    topics: post.tags || [],
+    createdAt: post.created_at,
+    liked: Boolean(myLikeRow),
+    likes: post.like_count || 0,
+    reaction: myLikeRow?.reaction || null,
+    comments: (post.community_comments || []).map(commentRowToComment),
+    userId: post.user_id,
+  };
+};
 
 export function CommunityProvider({ children }) {
-  const [posts, setPosts] = useState(starterPosts);
+  const { currentUser, isHydrated: isAuthHydrated } = useAuth();
+  const { profile } = useWellness();
+  const currentUserId = currentUser?.id;
+
+  const [posts, setPosts] = useState([]);
   const [isHydrated, setIsHydrated] = useState(false);
 
+  const loadPosts = async () => {
+    const [postsResult, likesResult] = await Promise.all([
+      supabase
+        .from("community_posts")
+        .select("*, community_comments(*)")
+        .order("created_at", { ascending: false }),
+      currentUserId
+        ? supabase
+            .from("community_post_likes")
+            .select("*")
+            .eq("user_id", currentUserId)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+
+    if (postsResult.error) {
+      console.warn("Unable to load community posts", postsResult.error.message);
+      return;
+    }
+
+    const likes = likesResult.data || [];
+    const mapped = (postsResult.data || []).map((post) =>
+      rowToPost({
+        post,
+        likesForPost: likes.filter((l) => l.post_id === post.id),
+        currentUserId,
+      }),
+    );
+    setPosts(mapped);
+  };
+
   useEffect(() => {
+    let isActive = true;
+
     const restore = async () => {
+      setIsHydrated(false);
+
+      if (!isAuthHydrated) {
+        return;
+      }
+
       try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setPosts(parsed);
-          }
-        }
+        await loadPosts();
       } catch (error) {
         console.warn("Unable to restore community posts", error);
       } finally {
-        setIsHydrated(true);
+        if (isActive) setIsHydrated(true);
       }
     };
+
     restore();
-  }, []);
-
-  useEffect(() => {
-    if (!isHydrated) {
-      return;
-    }
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(posts)).catch((e) =>
-      console.warn("Unable to save community posts", e),
-    );
-  }, [isHydrated, posts]);
-
-  const addPost = ({ title, experience, topics, isAnonymous }) => {
-    const newPost = {
-      id: `post-${Date.now()}`,
-      author: isAnonymous ? "Anonymous" : "You",
-      isAnonymous,
-      title: title.trim(),
-      experience: experience.trim(),
-      topics,
-      createdAt: "Just now",
-      liked: false,
-      likes: 0,
-      reaction: null,
-      comments: [],
+    return () => {
+      isActive = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserId, isAuthHydrated]);
 
+  const displayName = (isAnonymous) => {
+    if (isAnonymous) return "Anonymous";
+    return profile?.username || profile?.fullName || "Member";
+  };
+
+  const addPost = async ({ title, experience, topics, isAnonymous }) => {
+    const { data, error } = await supabase
+      .from("community_posts")
+      .insert({
+        user_id: currentUserId,
+        title: title.trim(),
+        content: experience.trim(),
+        tags: topics || [],
+        is_anonymous: isAnonymous,
+        display_name: displayName(isAnonymous),
+      })
+      .select("*, community_comments(*)")
+      .single();
+
+    if (error) {
+      console.warn("Unable to create post", error.message);
+      return null;
+    }
+
+    const newPost = rowToPost({ post: data, likesForPost: [], currentUserId });
     setPosts((prev) => [newPost, ...prev]);
     return newPost;
   };
 
-  const toggleLike = (postId) => {
+  const toggleLike = async (postId) => {
+    const post = posts.find((p) => p.id === postId);
+    if (!post) return;
+
+    const wasLiked = post.liked;
+
     setPosts((prev) =>
-      prev.map((post) =>
-        post.id === postId
+      prev.map((p) =>
+        p.id === postId
           ? {
-              ...post,
-              liked: !post.liked,
-              likes: post.liked ? Math.max(0, post.likes - 1) : post.likes + 1,
+              ...p,
+              liked: !wasLiked,
+              likes: wasLiked ? Math.max(0, p.likes - 1) : p.likes + 1,
             }
-          : post,
+          : p,
       ),
     );
+
+    if (wasLiked) {
+      const { error } = await supabase
+        .from("community_post_likes")
+        .delete()
+        .eq("post_id", postId)
+        .eq("user_id", currentUserId);
+      if (!error) {
+        await supabase
+          .from("community_posts")
+          .update({ like_count: Math.max(0, post.likes - 1) })
+          .eq("id", postId);
+      } else {
+        console.warn("Unable to unlike post", error.message);
+      }
+    } else {
+      const { error } = await supabase
+        .from("community_post_likes")
+        .insert({ post_id: postId, user_id: currentUserId });
+      if (!error) {
+        await supabase
+          .from("community_posts")
+          .update({ like_count: post.likes + 1 })
+          .eq("id", postId);
+      } else {
+        console.warn("Unable to like post", error.message);
+      }
+    }
   };
 
-  const setReaction = (postId, reaction) => {
+  const setReaction = async (postId, reaction) => {
     setPosts((prev) =>
-      prev.map((post) => (post.id === postId ? { ...post, reaction } : post)),
+      prev.map((p) => (p.id === postId ? { ...p, reaction } : p)),
     );
+
+    const { error } = await supabase.from("community_post_likes").upsert(
+      {
+        post_id: postId,
+        user_id: currentUserId,
+        reaction,
+      },
+      { onConflict: "post_id,user_id" },
+    );
+
+    if (error) {
+      console.warn("Unable to save reaction", error.message);
+    }
   };
 
-  const addComment = (postId, text) => {
+  const addComment = async (postId, text) => {
     const trimmedText = text.trim();
     if (!trimmedText) {
       return;
     }
 
+    const isAnonymous = false;
+    const { data, error } = await supabase
+      .from("community_comments")
+      .insert({
+        post_id: postId,
+        user_id: currentUserId,
+        content: trimmedText,
+        is_anonymous: isAnonymous,
+        display_name: displayName(isAnonymous),
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.warn("Unable to add comment", error.message);
+      return;
+    }
+
+    const newComment = commentRowToComment(data);
     setPosts((prev) =>
       prev.map((post) =>
         post.id === postId
-          ? {
-              ...post,
-              comments: [
-                ...post.comments,
-                {
-                  id: `comment-${Date.now()}`,
-                  author: "You",
-                  text: trimmedText,
-                },
-              ],
-            }
+          ? { ...post, comments: [...post.comments, newComment] }
           : post,
       ),
     );
@@ -163,7 +237,7 @@ export function CommunityProvider({ children }) {
       setReaction,
       addComment,
     }),
-    [posts, isHydrated],
+    [posts, isHydrated, currentUserId],
   );
 
   return (

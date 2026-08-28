@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Alert,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -56,17 +57,25 @@ export default function TherapistBookingScreen() {
 
   const canConfirm = Boolean(selectedDate && selectedTime && sessionType);
 
-  const handleConfirmBooking = () => {
+  const handleConfirmBooking = async () => {
     if (!canConfirm) {
       return;
     }
 
-    const appointment = addAppointment({
+    const appointment = await addAppointment({
       therapist,
       date: selectedDate,
       time: selectedTime,
       sessionType,
     });
+
+    if (!appointment) {
+      Alert.alert(
+        "Booking failed",
+        "We couldn't confirm your appointment. Please try again.",
+      );
+      return;
+    }
 
     navigation.navigate("TherapistBookingSuccess", { appointment });
   };

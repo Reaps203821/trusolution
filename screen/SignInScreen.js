@@ -11,11 +11,11 @@ import {
   Alert,
   Modal,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
 
 const validateEmail = (email) => /\S+@\S+\.\S+/.test(email.trim());
 
@@ -50,7 +50,7 @@ const handleSignIn = async () => {
   }
 
   setIsSubmitting(true);
-  const result = signIn({ email, password });
+  const result = await signIn({ email, password });
 
   if (!result.ok) {
     setIsSubmitting(false);
@@ -59,23 +59,35 @@ const handleSignIn = async () => {
   }
 
   try {
-    const savedRole = await AsyncStorage.getItem("userRole");
+    const { data: profileRow, error } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", result.user.id)
+      .maybeSingle();
 
-    if (savedRole === "user") {
+    if (error) {
+      console.log("Error reading user role:", error.message);
+      navigation.replace("RoleSelection");
+      return;
+    }
+
+    if (profileRow?.role === "user") {
       navigation.replace("MainTabs");
       return;
     }
 
-    if (savedRole === "therapist") {
+    if (profileRow?.role === "therapist") {
       navigation.replace("TherapistComingSoon");
       return;
     }
 
-    // If no role has been saved yet
+    // If no role has been chosen yet
     navigation.replace("RoleSelection");
   } catch (error) {
     console.log("Error reading user role:", error);
     navigation.replace("RoleSelection");
+  } finally {
+    setIsSubmitting(false);
   }
 };
 

@@ -1,4 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, {
   createContext,
   useContext,
@@ -6,50 +5,107 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import { supabase } from "../lib/supabase";
+import { useAuth } from "./AuthContext";
 
-const CHAT_KEY = "@trusolution/chat-data-v1";
 const ChatContext = createContext(null);
 
-// A conversation is keyed by a stable id (peer id or therapist id).
-// Each conversation holds an array of messages and an optional rating.
-const createId = (prefix) =>
-  `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+const formatTime = (isoString) =>
+  new Date(isoString).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+const buildRating = (session) => {
+  if (!session.rating) return null;
+  return {
+    rating: session.rating,
+    feedback: session.feedback,
+    peerName: session.peer_name,
+    ratedAt: session.rated_at,
+  };
+};
 
 export function ChatProvider({ children }) {
+  const { currentUser, isHydrated: isAuthHydrated } = useAuth();
+  const currentUserId = currentUser?.id;
+
+  // conversations: { [conversationKey]: { sessionId, messages, rating, meta } }
   const [conversations, setConversations] = useState({});
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
+    let isActive = true;
+
     const restore = async () => {
+      setIsHydrated(false);
+      setConversations({});
+
+      if (!isAuthHydrated) return;
+      if (!currentUserId) {
+        if (isActive) setIsHydrated(true);
+        return;
+      }
+
       try {
-        const raw = await AsyncStorage.getItem(CHAT_KEY);
-        if (raw) {
-          setConversations(JSON.parse(raw));
+        const { data: sessions, error } = await supabase
+          .from("chat_sessions")
+          .select("*, chat_session_messages(*)")
+          .eq("user_id", currentUserId);
+
+        if (!isActive) return;
+
+        if (error) {
+          console.warn("Unable to restore chat sessions", error.message);
+        } else if (sessions) {
+          const next = {};
+          sessions.forEach((session) => {
+            const messages = (session.chat_session_messages || [])
+              .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+              .map((m) => ({
+                id: m.id,
+                text: m.content,
+                sender: m.sender,
+                time: formatTime(m.created_at),
+              }));
+
+            next[session.conversation_key] = {
+              sessionId: session.id,
+              messages,
+              rating: buildRating(session),
+              meta: {
+                id: session.conversation_key,
+                peerName: session.peer_name,
+                chatType: session.chat_type,
+                conversationStyle: session.conversation_style,
+              },
+            };
+          });
+          setConversations(next);
         }
       } catch (error) {
-        console.warn("Unable to restore chat data", error);
+        console.warn("Unable to restore chat sessions", error);
       } finally {
-        setIsHydrated(true);
+        if (isActive) setIsHydrated(true);
       }
     };
-    restore();
-  }, []);
 
-  useEffect(() => {
-    if (!isHydrated) {
-      return;
-    }
-    AsyncStorage.setItem(CHAT_KEY, JSON.stringify(conversations)).catch((e) =>
-      console.warn("Unable to save chat data", e),
-    );
-  }, [isHydrated, conversations]);
+    restore();
+    return () => {
+      isActive = false;
+    };
+  }, [currentUserId, isAuthHydrated]);
 
   const getConversation = (conversationId) => {
     if (!conversationId) {
       return { messages: [], rating: null, meta: null };
     }
     return (
-      conversations[conversationId] || { messages: [], rating: null, meta: null }
+      conversations[conversationId] || {
+        messages: [],
+        rating: null,
+        meta: null,
+      }
     );
   };
 
@@ -60,41 +116,137 @@ export function ChatProvider({ children }) {
     }
 
     const fresh = {
+      sessionId: null,
       messages: [],
       rating: null,
       meta: { id, peerName, chatType, conversationStyle },
     };
     setConversations((prev) => ({ ...prev, [id]: fresh }));
+
+    // Fire-and-forget create the session row so a sessionId exists before
+    // the first message is sent.
+    (async () => {
+      if (!currentUserId) return;
+      const { data, error } = await supabase
+        .from("chat_sessions")
+        .insert({
+          user_id: currentUserId,
+          conversation_key: id,
+          peer_name: peerName,
+          chat_type: chatType,
+          conversation_style: conversationStyle,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        // Might already exist (race/reopen) - fetch it instead.
+        const { data: existingRow } = await supabase
+          .from("chat_sessions")
+          .select("*")
+          .eq("user_id", currentUserId)
+          .eq("conversation_key", id)
+          .maybeSingle();
+        if (existingRow) {
+          setConversations((prev) => ({
+            ...prev,
+            [id]: { ...(prev[id] || fresh), sessionId: existingRow.id },
+          }));
+        } else {
+          console.warn("Unable to open conversation", error.message);
+        }
+        return;
+      }
+
+      setConversations((prev) => ({
+        ...prev,
+        [id]: { ...(prev[id] || fresh), sessionId: data.id },
+      }));
+    })();
+
     return fresh;
   };
 
-  const addMessage = (conversationId, { text, sender, time }) => {
-    if (!conversationId) {
-      return;
+  const ensureSessionId = async (conversationId) => {
+    const existing = conversations[conversationId];
+    if (existing?.sessionId) return existing.sessionId;
+
+    const { data, error } = await supabase
+      .from("chat_sessions")
+      .select("*")
+      .eq("user_id", currentUserId)
+      .eq("conversation_key", conversationId)
+      .maybeSingle();
+
+    if (data) return data.id;
+
+    if (error) {
+      console.warn("Unable to look up chat session", error.message);
     }
-    const message = {
-      id: createId("msg"),
+    return null;
+  };
+
+  const addMessage = async (conversationId, { text, sender, time }) => {
+    if (!conversationId) return;
+
+    const optimisticMessage = {
+      id: `local-${Date.now()}`,
       text,
       sender,
       time,
     };
+
     setConversations((prev) => {
       const existing = prev[conversationId] || { messages: [], rating: null };
       return {
         ...prev,
         [conversationId]: {
           ...existing,
-          messages: [...existing.messages, message],
+          messages: [...existing.messages, optimisticMessage],
         },
       };
     });
-    return message;
+
+    const sessionId = await ensureSessionId(conversationId);
+    if (!sessionId) return optimisticMessage;
+
+    const { data, error } = await supabase
+      .from("chat_session_messages")
+      .insert({ session_id: sessionId, sender, content: text })
+      .select()
+      .single();
+
+    if (error) {
+      console.warn("Unable to save message", error.message);
+      return optimisticMessage;
+    }
+
+    const savedMessage = {
+      id: data.id,
+      text: data.content,
+      sender: data.sender,
+      time: formatTime(data.created_at),
+    };
+
+    setConversations((prev) => {
+      const existing = prev[conversationId] || { messages: [] };
+      return {
+        ...prev,
+        [conversationId]: {
+          ...existing,
+          sessionId,
+          messages: existing.messages.map((m) =>
+            m.id === optimisticMessage.id ? savedMessage : m,
+          ),
+        },
+      };
+    });
+
+    return savedMessage;
   };
 
   const addReply = (conversationId, peerName, text) => {
-    if (!conversationId) {
-      return;
-    }
+    if (!conversationId) return;
     addMessage(conversationId, {
       text,
       sender: "peer",
@@ -105,25 +257,33 @@ export function ChatProvider({ children }) {
     });
   };
 
-  const rateConversation = (conversationId, { rating, feedback, peerName }) => {
-    if (!conversationId) {
-      return;
-    }
+  const rateConversation = async (conversationId, { rating, feedback, peerName }) => {
+    if (!conversationId) return;
+
+    const ratedAt = new Date().toISOString();
+
     setConversations((prev) => {
       const existing = prev[conversationId] || { messages: [] };
       return {
         ...prev,
         [conversationId]: {
           ...existing,
-          rating: {
-            rating,
-            feedback,
-            peerName,
-            ratedAt: new Date().toISOString(),
-          },
+          rating: { rating, feedback, peerName, ratedAt },
         },
       };
     });
+
+    const sessionId = await ensureSessionId(conversationId);
+    if (!sessionId) return;
+
+    const { error } = await supabase
+      .from("chat_sessions")
+      .update({ rating, feedback, rated_at: ratedAt })
+      .eq("id", sessionId);
+
+    if (error) {
+      console.warn("Unable to save rating", error.message);
+    }
   };
 
   const value = useMemo(
@@ -136,7 +296,7 @@ export function ChatProvider({ children }) {
       addReply,
       rateConversation,
     }),
-    [conversations, isHydrated],
+    [conversations, isHydrated, currentUserId],
   );
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
