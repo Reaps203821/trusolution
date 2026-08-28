@@ -10,6 +10,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useWellness } from "../context/WellnessContext";
 
 const TRACK_WIDTH = 280;
 
@@ -33,6 +34,7 @@ export default function MoodCheckScreen() {
   const [selectedMood, setSelectedMood] = useState(initialMood);
   const [severity, setSeverity] = useState(2);
   const [trackWidth, setTrackWidth] = useState(TRACK_WIDTH);
+  const { addMoodEntry } = useWellness();
 
   const knobOffset = useMemo(() => {
     if (trackWidth <= 24) {
@@ -199,13 +201,20 @@ export default function MoodCheckScreen() {
 
         <TouchableOpacity
           style={styles.saveButton}
-          onPress={() =>
+          onPress={() => {
+            addMoodEntry({
+              moodId: selectedMood.id,
+              moodLabel: selectedMood.label,
+              moodEmoji: selectedMood.emoji,
+              severity,
+              severityLabel: severityLabels[severity],
+            });
             navigation.navigate("MoodCheckSuccess", {
               moodLabel: selectedMood.label,
               moodEmoji: selectedMood.emoji,
               severityLabel: severityLabels[severity],
-            })
-          }
+            });
+          }}
         >
           <Text style={styles.saveButtonText}>Save Check-In</Text>
         </TouchableOpacity>

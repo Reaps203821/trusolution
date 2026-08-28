@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,21 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 
+// A pool of realistic peer matches so each search can surface a peer.
+const peerPool = [
+  { name: "Alex", topic: "Anxiety Support" },
+  { name: "Jordan", topic: "Stress & Work" },
+  { name: "Sam", topic: "Relationship Advice" },
+  { name: "Riley", topic: "Grief & Loss" },
+  { name: "Casey", topic: "Self-esteem" },
+  { name: "Taylor", topic: "Family Matters" },
+];
+
+const buildConversationId = (peerName, topics) => {
+  const topicKey = (topics[0] || "peer").replace(/\s+/g, "-").toLowerCase();
+  return `peer-${peerName.toLowerCase()}-${topicKey}`;
+};
+
 export default function SearchingScreen({ route }) {
   const insets = useSafeAreaInsets();
   const { selectedTopics = [], conversationStyle = "Both" } =
@@ -16,6 +31,8 @@ export default function SearchingScreen({ route }) {
   const navigation = useNavigation();
   const rotationAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.3)).current;
+  const [peer, setPeer] = useState(null);
+  const navigatedRef = useRef(false);
 
   useEffect(() => {
     Animated.loop(
@@ -39,7 +56,33 @@ export default function SearchingScreen({ route }) {
         ]),
       ]),
     ).start();
+
+    // Simulate a real search: pick a match after a short delay, then
+    // automatically open the chat.
+    const searchTimer = setTimeout(() => {
+      const randomPeer = peerPool[Math.floor(Math.random() * peerPool.length)];
+      setPeer(randomPeer);
+    }, 1800);
+
+    return () => clearTimeout(searchTimer);
   }, []);
+
+  // Auto-transition to chat once a peer is found.
+  useEffect(() => {
+    if (!peer || navigatedRef.current) {
+      return;
+    }
+    navigatedRef.current = true;
+    const conversationId = buildConversationId(peer.name, selectedTopics);
+    const peerName = `${peer.name} (${peer.topic})`;
+    navigation.replace("PeerChat", {
+      peerName,
+      conversationId,
+      conversationStyle,
+      selectedTopics,
+      chatType: "peer",
+    });
+  }, [peer, navigation, conversationStyle, selectedTopics]);
 
   const rotation = rotationAnim.interpolate({
     inputRange: [0, 1],
@@ -97,24 +140,19 @@ export default function SearchingScreen({ route }) {
       )}
 
       <Text style={styles.subtitle}>
-        {conversationStyle} style {"\u2022"} This may take a moment
+        {conversationStyle} style {"\u2022"} Checking available peers
       </Text>
+
+      {peer && (
+        <View style={styles.matchNotice}>
+          <Text style={styles.matchNoticeText}>
+            Match found: {peer.name} ({peer.topic})
+          </Text>
+        </View>
+      )}
 
       <TouchableOpacity style={styles.cancelBtn} onPress={cancelSearch}>
         <Text style={styles.cancelText}>Cancel Search</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.findBtn}
-        onPress={() =>
-          navigation.navigate("PeerChat", {
-            selectedTopics,
-            conversationStyle,
-            peerName: "Alex (Anxiety Support)",
-          })
-        }
-      >
-        <Text style={styles.findText}>Found Peer! Start Chat</Text>
       </TouchableOpacity>
     </View>
   );
@@ -201,6 +239,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginLeft: 8,
   },
+  matchNotice: {
+    backgroundColor: "#E7F4E1",
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#256D3C",
+    marginTop: 10,
+  },
+  matchNoticeText: {
+    color: "#256D3C",
+    fontWeight: "700",
+    fontSize: 14,
+  },
   cancelBtn: {
     backgroundColor: "#F7EBDD",
     paddingVertical: 14,
@@ -208,22 +260,10 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     borderWidth: 2,
     borderColor: "#6B3A24",
-    marginBottom: 20,
+    marginBottom: 40,
   },
   cancelText: {
     color: "#6B3A24",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  findBtn: {
-    backgroundColor: "#6B3A24",
-    paddingVertical: 14,
-    paddingHorizontal: 40,
-    borderRadius: 30,
-    marginBottom: 40,
-  },
-  findText: {
-    color: "#fff",
     fontWeight: "bold",
     fontSize: 16,
   },

@@ -1,8 +1,15 @@
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useWellness } from "../context/WellnessContext";
 
 const features = [
   "No profile picture shown",
@@ -13,9 +20,10 @@ const features = [
 const GhostModeScreen = () => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const { updateProfile, updatePreferences } = useWellness();
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}> 
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView
         contentContainerStyle={[
           styles.content,
@@ -32,7 +40,9 @@ const GhostModeScreen = () => {
             <Ionicons name="moon-outline" size={32} color="#7A4B2F" />
           </View>
           <Text style={styles.title}>Ghost Mode</Text>
-          <Text style={styles.subtitle}>Maximum privacy with full anonymity.</Text>
+          <Text style={styles.subtitle}>
+            Maximum privacy with full anonymity.
+          </Text>
 
           <View style={styles.featureList}>
             {features.map((feature) => (
@@ -45,12 +55,22 @@ const GhostModeScreen = () => {
         </View>
 
         <View style={styles.buttons}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
             <Text style={styles.backText}>Back</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.continueButton}
-            onPress={() => navigation.navigate("WelcomeAboard")}
+            onPress={() => {
+              updateProfile({ profileMode: "ghost" });
+              updatePreferences({
+                anonymousPosting: true,
+                profileVisible: false,
+              });
+              navigation.navigate("SharingMode");
+            }}
           >
             <Text style={styles.continueText}>Continue</Text>
           </TouchableOpacity>

@@ -2,18 +2,28 @@ import React, { useEffect } from "react";
 import { View, Image, Text, StyleSheet, StatusBar } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useAuth } from "../context/AuthContext";
 
 const SplashScreen = () => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const { currentUser, isHydrated } = useAuth();
 
   useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
+
     const timer = setTimeout(() => {
-      navigation.replace("Onboarding1");
-    }, 5000); // 5 seconds splash to Onboarding1
+      if (currentUser) {
+        navigation.replace("MainTabs");
+      } else {
+        navigation.replace("Onboarding1");
+      }
+    }, 2000);
 
     return () => clearTimeout(timer);
-  }, [navigation]);
+  }, [currentUser, isHydrated, navigation]);
 
   return (
     <>

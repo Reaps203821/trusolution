@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
@@ -12,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useAppointments } from "../context/AppointmentContext";
+import { useWellness } from "../context/WellnessContext";
 
 const moods = [
   { id: "calm", emoji: "\u{1F60A}" },
@@ -47,13 +49,28 @@ const quickActions = [
     icon: "calendar",
     action: "MoodCheck",
   },
+  {
+    title: "Mood Progress",
+    subtitle: "See your check-in trends",
+    icon: "analytics",
+    action: "MoodProgress",
+  },
+  {
+    title: "Support Plan",
+    subtitle: "Prepare your next helpful step",
+    icon: "heart",
+    action: "SupportPlan",
+  },
 ];
 
 export default function HomeScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { upcomingAppointment } = useAppointments();
+  const { moodEntries, journalEntries, profile } = useWellness();
   const [selectedMood, setSelectedMood] = useState("calm");
+  const latestMoodEntry = moodEntries[0];
+  const displayName = profile.fullName.trim() || "there";
 
   useFocusEffect(
     React.useCallback(() => {
@@ -100,7 +117,7 @@ export default function HomeScreen() {
       >
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>Good Morning, User</Text>
+            <Text style={styles.greeting}>Good Morning, {displayName}</Text>
             <Text style={styles.subText}>
               Take a gentle check-in before your day gets busy.
             </Text>
@@ -113,19 +130,21 @@ export default function HomeScreen() {
             >
               <Ionicons name="book-outline" size={22} color="#3D2B1F" />
             </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => navigation.navigate("ResourceLibrary")}
-              style={styles.headerButton}
-            >
-              <Ionicons name="library-outline" size={22} color="#3D2B1F" />
-            </TouchableOpacity>
+
             <TouchableOpacity
               onPress={() => navigation.navigate("Settings")}
               accessibilityRole="button"
               accessibilityLabel="Open settings"
               style={styles.headerButton}
             >
-              <Ionicons name="person" size={22} color="#3D2B1F" />
+              {profile.profileImageUri ? (
+                <Image
+                  source={{ uri: profile.profileImageUri }}
+                  style={styles.profileImage}
+                />
+              ) : (
+                <Ionicons name="person" size={22} color="#3D2B1F" />
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -149,17 +168,25 @@ export default function HomeScreen() {
             energy.
           </Text>
           <View style={styles.heroStats}>
+            <TouchableOpacity
+              style={styles.heroStatCard}
+              onPress={() => navigation.navigate("MoodProgress")}
+              activeOpacity={0.9}
+            >
+              <Text style={styles.heroStatValue}>{moodEntries.length}</Text>
+              <Text style={styles.heroStatLabel}>Mood check-ins</Text>
+            </TouchableOpacity>
             <View style={styles.heroStatCard}>
-              <Text style={styles.heroStatValue}>5 days</Text>
-              <Text style={styles.heroStatLabel}>Mood streak</Text>
+              <Text style={styles.heroStatValue}>{journalEntries.length}</Text>
+              <Text style={styles.heroStatLabel}>Journal entries</Text>
             </View>
             <View style={styles.heroStatCard}>
-              <Text style={styles.heroStatValue}>3</Text>
-              <Text style={styles.heroStatLabel}>Recent chats</Text>
-            </View>
-            <View style={styles.heroStatCard}>
-              <Text style={styles.heroStatValue}>Today</Text>
-              <Text style={styles.heroStatLabel}>Last check-in</Text>
+              <Text style={styles.heroStatValue}>
+                {latestMoodEntry ? latestMoodEntry.moodEmoji : "—"}
+              </Text>
+              <Text style={styles.heroStatLabel}>
+                {latestMoodEntry ? "Latest check-in" : "No check-in yet"}
+              </Text>
             </View>
           </View>
         </View>
@@ -306,9 +333,18 @@ export default function HomeScreen() {
         <Text style={styles.sectionTitle}>Activity Summary</Text>
 
         <View style={styles.summaryRow}>
-          <SummaryCard title="Mood Streak" value="5 Days" />
-          <SummaryCard title="Recent Chat" value="3" />
-          <SummaryCard title="Last Journal" value="Yesterday" />
+          <SummaryCard
+            title="Mood Checks"
+            value={moodEntries.length.toString()}
+          />
+          <SummaryCard
+            title="Journal Entries"
+            value={journalEntries.length.toString()}
+          />
+          <SummaryCard
+            title="Last Mood"
+            value={latestMoodEntry?.moodLabel || "None"}
+          />
         </View>
       </ScrollView>
     </View>
@@ -366,6 +402,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+  },
+  profileImage: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
   },
   heroCard: {
     backgroundColor: "#7A4B2F",

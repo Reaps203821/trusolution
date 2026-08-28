@@ -9,6 +9,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useWellness } from "../context/WellnessContext";
 
 const issues = [
   "Stress",
@@ -28,7 +29,8 @@ const issues = [
 const SelectIssuesScreen = () => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const [selectedIssues, setSelectedIssues] = useState([]);
+  const { profile, updateProfile } = useWellness();
+  const [selectedIssues, setSelectedIssues] = useState(profile.selectedIssues);
 
   const toggleIssue = (issue) => {
     const newSelected = selectedIssues.includes(issue)
@@ -38,6 +40,7 @@ const SelectIssuesScreen = () => {
   };
 
   const handleContinue = () => {
+    updateProfile({ selectedIssues });
     navigation.navigate("ProfileMode");
   };
 

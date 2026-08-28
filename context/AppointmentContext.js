@@ -1,5 +1,13 @@
-import React, { createContext, useContext, useMemo, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
+const STORAGE_KEY = "@trusolution/appointments-v1";
 const AppointmentContext = createContext(null);
 
 const buildBookingId = () =>
@@ -16,6 +24,35 @@ const shiftIsoDate = (isoDate, days) => {
 
 export function AppointmentProvider({ children }) {
   const [appointments, setAppointments] = useState([]);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    const restore = async () => {
+      try {
+        const raw = await AsyncStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            setAppointments(parsed);
+          }
+        }
+      } catch (error) {
+        console.warn("Unable to restore appointments", error);
+      } finally {
+        setIsHydrated(true);
+      }
+    };
+    restore();
+  }, []);
+
+  useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(appointments)).catch((e) =>
+      console.warn("Unable to save appointments", e),
+    );
+  }, [isHydrated, appointments]);
 
   const addAppointment = ({ therapist, date, time, sessionType }) => {
     const newAppointment = {
@@ -65,12 +102,13 @@ export function AppointmentProvider({ children }) {
     () => ({
       appointments,
       upcomingAppointment,
+      isHydrated,
       addAppointment,
       cancelAppointment,
       rescheduleAppointment,
       getAppointmentById,
     }),
-    [appointments, upcomingAppointment],
+    [appointments, upcomingAppointment, isHydrated],
   );
 
   return (

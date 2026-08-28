@@ -13,33 +13,42 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
-
-const dummyMessages = [
-  {
-    id: "1",
-    text: "Hi! Thanks for sharing your struggle with anxiety. I've been there too.",
-    sender: "peer",
-    time: "10:30 AM",
-  },
-  {
-    id: "2",
-    text: "I'm here to listen without judgement. What's been the hardest part for you?",
-    sender: "peer",
-    time: "10:32 AM",
-  },
-];
+import { useChat } from "../context/ChatContext";
 
 export default function PeerChatScreen({ route }) {
   const navigation = useNavigation();
   const {
+    conversationId,
     conversationStyle = "Both",
-    peerName = "Alex",
+    peerName = "Peer",
     chatType = "peer",
   } = route.params || {};
-  const [messages, setMessages] = useState(dummyMessages);
+
+  const insets = useSafeAreaInsets();
+  const {
+    getConversation,
+    openConversation,
+    addMessage,
+    addReply,
+  } = useChat();
+
+  // Build a stable conversation id from the peer/therapist.
+  const resolvedId =
+    conversationId || `${chatType}-${peerName.replace(/\s+/g, "-").toLowerCase()}`;
+
+  const conversation = getConversation(resolvedId);
   const [inputText, setInputText] = useState("");
   const flatListRef = useRef();
-  const insets = useSafeAreaInsets();
+
+  // Ensure the conversation exists in state.
+  useEffect(() => {
+    openConversation({
+      id: resolvedId,
+      peerName,
+      chatType,
+      conversationStyle,
+    });
+  }, [resolvedId, peerName, chatType, conversationStyle]);
 
   const handleBackPress = React.useCallback(() => {
     if (chatType === "therapist") {
@@ -71,45 +80,36 @@ export default function PeerChatScreen({ route }) {
 
   useEffect(() => {
     flatListRef.current?.scrollToEnd({ animated: false });
-  }, [messages]);
+  }, [conversation.messages.length]);
 
   const statusLabel =
     chatType === "therapist"
       ? "Available now \u2022 Professional support"
       : `Online \u2022 ${conversationStyle} style`;
 
+  const messages = conversation.messages || [];
+
   const sendMessage = () => {
     if (!inputText.trim()) {
       return;
     }
 
-    const newMessage = {
-      id: Date.now().toString(),
+    addMessage(resolvedId, {
       text: inputText.trim(),
       sender: "user",
       time: new Date().toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",
       }),
-    };
-
-    setMessages((prev) => [...prev, newMessage]);
+    });
     setInputText("");
 
     setTimeout(() => {
-      const peerResponse = {
-        id: (Date.now() + 1).toString(),
-        text:
-          conversationStyle === "Listener"
-            ? "I'm listening. Please continue..."
-            : "That makes sense. Tell me a little more about what happened.",
-        sender: "peer",
-        time: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      };
-      setMessages((prev) => [...prev, peerResponse]);
+      const replyText =
+        conversationStyle === "Listener"
+          ? "I'm listening. Please continue..."
+          : "That makes sense. Tell me a little more about what happened.";
+      addReply(resolvedId, peerName, replyText);
     }, 1200);
   };
 
@@ -132,7 +132,9 @@ export default function PeerChatScreen({ route }) {
           </View>
         )}
 
-        <View style={[styles.bubble, isUser ? styles.userBubble : styles.peerBubble]}>
+        <View
+          style={[styles.bubble, isUser ? styles.userBubble : styles.peerBubble]}
+        >
           <Text style={[styles.messageText, isUser && styles.userMessageText]}>
             {item.text}
           </Text>
@@ -187,7 +189,12 @@ export default function PeerChatScreen({ route }) {
             {chatType !== "therapist" && (
               <TouchableOpacity
                 style={styles.iconButton}
-                onPress={() => navigation.navigate("RatePeer", { peerName })}
+                onPress={() =>
+                  navigation.navigate("RatePeer", {
+                    peerName,
+                    conversationId: resolvedId,
+                  })
+                }
               >
                 <Ionicons name="star-outline" size={20} color="#2D2418" />
               </TouchableOpacity>

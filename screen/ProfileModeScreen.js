@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-nati
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useWellness } from "../context/WellnessContext";
 
 const modes = [
   {
@@ -28,12 +29,15 @@ const modes = [
 const ProfileModeScreen = () => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const [selectedMode, setSelectedMode] = useState("");
+  const { profile, updateProfile } = useWellness();
+  const [selectedMode, setSelectedMode] = useState(profile.profileMode);
 
   const handleContinue = () => {
     if (!selectedMode) {
       return;
     }
+
+    updateProfile({ profileMode: selectedMode });
 
     if (selectedMode === "ghost") {
       navigation.navigate("GhostMode");

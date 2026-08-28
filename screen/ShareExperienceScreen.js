@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useCommunity } from "../context/CommunityContext";
+import { useWellness } from "../context/WellnessContext";
 
 const topics = [
   "Anxiety",
@@ -31,10 +32,10 @@ export default function ShareExperienceScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { addPost } = useCommunity();
+  const { preferences, updatePreferences } = useWellness();
   const [title, setTitle] = useState("");
   const [experience, setExperience] = useState("");
   const [selectedTopics, setSelectedTopics] = useState([]);
-  const [isAnonymous, setIsAnonymous] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const isFormFilled = title.trim() && experience.trim();
 
@@ -54,12 +55,12 @@ export default function ShareExperienceScreen() {
       title,
       experience,
       topics: selectedTopics.length ? selectedTopics : ["Other"],
-      isAnonymous,
+      isAnonymous: preferences.anonymousPosting,
     });
 
     setIsLoading(false);
 
-    Alert.alert("Posted", "Your experience has been added to the local feed.", [
+Alert.alert("Posted", "Your experience has been added to the community feed.", [
       {
         text: "View Feed",
         onPress: () => {
@@ -111,9 +112,9 @@ export default function ShareExperienceScreen() {
           <View style={styles.headerSpacer} />
         </View>
 
-        <Text style={styles.subtitle}>
-          Share something real. It will appear in the local community feed for
-          this prototype.
+<Text style={styles.subtitle}>
+          Share something real. It will appear in the community feed for others
+          to support you.
         </Text>
 
         <View style={styles.form}>
@@ -155,20 +156,22 @@ export default function ShareExperienceScreen() {
 
           <TouchableOpacity
             style={styles.anonymousToggle}
-            onPress={() => setIsAnonymous((prev) => !prev)}
+            onPress={() =>
+              updatePreferences({ anonymousPosting: !preferences.anonymousPosting })
+            }
           >
             <View style={styles.toggleLeft}>
               <Ionicons
-                name={isAnonymous ? "shield-checkmark" : "person"}
+                name={preferences.anonymousPosting ? "shield-checkmark" : "person"}
                 size={18}
                 color="#3D2B1F"
               />
               <Text style={styles.toggleText}>
-                {isAnonymous ? "Anonymous Post" : "Show Username"}
+                {preferences.anonymousPosting ? "Anonymous Post" : "Show Username"}
               </Text>
             </View>
             <Ionicons
-              name={isAnonymous ? "checkmark-circle" : "ellipse-outline"}
+              name={preferences.anonymousPosting ? "checkmark-circle" : "ellipse-outline"}
               size={20}
               color="#3D2B1F"
             />

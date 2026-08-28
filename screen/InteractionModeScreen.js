@@ -155,11 +155,11 @@ export default function InteractionModeScreen() {
           </Text>
         </View>
 
-        <View style={styles.feedIntro}>
+<View style={styles.feedIntro}>
           <Ionicons name="sparkles-outline" size={20} color="#7A4B2F" />
           <Text style={styles.feedIntroText}>
-            Posts shared from `Share Experience` will appear here for the local
-            prototype.
+            Shared experiences from people in the community appear here. Be kind
+            and supportive.
           </Text>
         </View>
 

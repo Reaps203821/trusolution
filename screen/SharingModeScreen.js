@@ -1,8 +1,15 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useWellness } from "../context/WellnessContext";
 
 const modes = [
   {
@@ -28,10 +35,21 @@ const modes = [
 const SharingModeScreen = () => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const [selectedMode, setSelectedMode] = useState("");
+  const { preferences, updatePreferences } = useWellness();
+  const [selectedMode, setSelectedMode] = useState(
+    preferences.sharingMode || "",
+  );
+
+  const handleContinue = () => {
+    if (!selectedMode) {
+      return;
+    }
+    updatePreferences({ sharingMode: selectedMode });
+    navigation.navigate("WelcomeAboard");
+  };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}> 
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView
         contentContainerStyle={[
           styles.content,
@@ -45,7 +63,9 @@ const SharingModeScreen = () => {
       >
         <View style={styles.heroCard}>
           <Text style={styles.title}>Choose sharing mode</Text>
-          <Text style={styles.subtitle}>Decide who can view your posts and progress.</Text>
+          <Text style={styles.subtitle}>
+            Decide who can view your posts and progress.
+          </Text>
         </View>
 
         {modes.map((mode) => {
@@ -56,7 +76,9 @@ const SharingModeScreen = () => {
               style={[styles.modeCard, isSelected && styles.modeCardSelected]}
               onPress={() => setSelectedMode(mode.id)}
             >
-              <View style={[styles.iconWrap, isSelected && styles.iconWrapSelected]}>
+              <View
+                style={[styles.iconWrap, isSelected && styles.iconWrapSelected]}
+              >
                 <Ionicons
                   name={mode.icon}
                   size={22}
@@ -64,8 +86,22 @@ const SharingModeScreen = () => {
                 />
               </View>
               <View style={styles.textWrap}>
-                <Text style={[styles.modeTitle, isSelected && styles.modeTitleSelected]}>{mode.title}</Text>
-                <Text style={[styles.modeSubtitle, isSelected && styles.modeSubtitleSelected]}>{mode.subtitle}</Text>
+                <Text
+                  style={[
+                    styles.modeTitle,
+                    isSelected && styles.modeTitleSelected,
+                  ]}
+                >
+                  {mode.title}
+                </Text>
+                <Text
+                  style={[
+                    styles.modeSubtitle,
+                    isSelected && styles.modeSubtitleSelected,
+                  ]}
+                >
+                  {mode.subtitle}
+                </Text>
               </View>
             </TouchableOpacity>
           );
@@ -73,7 +109,7 @@ const SharingModeScreen = () => {
 
         <TouchableOpacity
           style={[styles.button, !selectedMode && styles.disabledButton]}
-          onPress={() => selectedMode && navigation.navigate("FocusMode")}
+          onPress={handleContinue}
           disabled={!selectedMode}
         >
           <Text style={styles.buttonText}>Continue</Text>

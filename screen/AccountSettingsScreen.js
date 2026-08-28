@@ -1,22 +1,75 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import * as ImagePicker from "expo-image-picker";
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
   TextInput,
+  Alert,
+  Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useWellness } from "../context/WellnessContext";
 
 export default function AccountSettingsScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const [fullName, setFullName] = useState("Prince User");
-  const [email, setEmail] = useState("prince@example.com");
-  const [username, setUsername] = useState("@prince");
+  const { profile, updateProfile } = useWellness();
+  const [fullName, setFullName] = useState(profile.fullName);
+  const [email, setEmail] = useState(profile.email);
+  const [username, setUsername] = useState(profile.username);
+  const [profileImageUri, setProfileImageUri] = useState(profile.profileImageUri);
+  const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+
+  useEffect(() => {
+    setFullName(profile.fullName);
+    setEmail(profile.email);
+    setUsername(profile.username);
+    setProfileImageUri(profile.profileImageUri);
+  }, [profile.email, profile.fullName, profile.profileImageUri, profile.username]);
+
+  useEffect(() => {
+    if (!showSaveSuccess) {
+      return undefined;
+    }
+
+    const timer = setTimeout(() => navigation.goBack(), 1200);
+    return () => clearTimeout(timer);
+  }, [navigation, showSaveSuccess]);
+
+  const pickProfilePhoto = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert("Photo permission needed", "Allow gallery access to choose a profile photo.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      setProfileImageUri(result.assets[0].uri);
+    }
+  };
+
+  const saveChanges = () => {
+    updateProfile({
+      fullName: fullName.trim(),
+      username: username.trim(),
+      email: email.trim(),
+      profileImageUri,
+    });
+    setShowSaveSuccess(true);
+  };
 
   return (
     <View
@@ -38,11 +91,26 @@ export default function AccountSettingsScreen() {
         </View>
 
         <View style={styles.profileCard}>
-          <View style={styles.avatar}>
-            <Ionicons name="person" size={30} color="#FFF8EC" />
-          </View>
+          <TouchableOpacity
+            style={styles.avatar}
+            onPress={pickProfilePhoto}
+            accessibilityRole="button"
+            accessibilityLabel="Change profile photo"
+          >
+            {profileImageUri ? (
+              <Image source={{ uri: profileImageUri }} style={styles.avatarImage} />
+            ) : (
+              <Ionicons name="person" size={30} color="#FFF8EC" />
+            )}
+            <View style={styles.editPhotoBadge}>
+              <Ionicons name="camera" size={13} color="#FFF9F3" />
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={pickProfilePhoto}>
+            <Text style={styles.changePhotoText}>Change profile photo</Text>
+          </TouchableOpacity>
           <Text style={styles.profileName}>{fullName}</Text>
-          <Text style={styles.profileMeta}>Community member since March 2026</Text>
+          <Text style={styles.profileMeta}>Your private profile on this device</Text>
         </View>
 
         <View style={styles.section}>
@@ -83,10 +151,33 @@ export default function AccountSettingsScreen() {
           </View>
         </View>
 
-        <TouchableOpacity style={styles.saveButton}>
+        <TouchableOpacity
+          style={styles.saveButton}
+          onPress={saveChanges}
+        >
           <Text style={styles.saveButtonText}>Save Changes</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <Modal visible={showSaveSuccess} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.successModal}>
+            <View style={styles.successIcon}>
+              <Ionicons name="checkmark" size={28} color="#256D3C" />
+            </View>
+            <Text style={styles.successTitle}>Changes saved</Text>
+            <Text style={styles.successText}>
+              Your profile was updated on this device. Returning to Settings…
+            </Text>
+            <TouchableOpacity
+              style={styles.successButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Text style={styles.successButtonText}>Back to Settings now</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -139,6 +230,59 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 12,
   },
+  avatarImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+  },
+  editPhotoBadge: {
+    position: "absolute",
+    right: -2,
+    bottom: -2,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#256D3C",
+    borderWidth: 2,
+    borderColor: "#FFF8EE",
+  },
+  changePhotoText: {
+    color: "#7A4B2F",
+    fontSize: 13,
+    fontWeight: "800",
+    marginTop: 8,
+    marginBottom: 10,
+  },
+  modalOverlay: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+    backgroundColor: "rgba(45, 34, 24, 0.5)",
+  },
+  successModal: {
+    width: "100%",
+    maxWidth: 340,
+    alignItems: "center",
+    backgroundColor: "#FFF8EE",
+    borderRadius: 24,
+    padding: 24,
+  },
+  successIcon: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#E7F4E1",
+    marginBottom: 14,
+  },
+  successTitle: { color: "#3D2B1F", fontSize: 22, fontWeight: "800", marginBottom: 8 },
+  successText: { color: "#7B6753", fontSize: 14, lineHeight: 20, textAlign: "center", marginBottom: 18 },
+  successButton: { width: "100%", alignItems: "center", backgroundColor: "#7A4B2F", borderRadius: 14, paddingVertical: 13 },
+  successButtonText: { color: "#FFF9F3", fontSize: 14, fontWeight: "800" },
   profileName: {
     fontSize: 22,
     fontWeight: "800",

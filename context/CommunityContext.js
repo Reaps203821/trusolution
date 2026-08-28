@@ -1,5 +1,13 @@
-import React, { createContext, useContext, useMemo, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
+const STORAGE_KEY = "@trusolution/community-posts-v1";
 const CommunityContext = createContext(null);
 
 const starterPosts = [
@@ -11,7 +19,7 @@ const starterPosts = [
     experience:
       "I finally took a short walk after staying indoors for days. It felt small, but I am proud of it.",
     topics: ["Self-care", "Motivation"],
-    createdAt: "2h ago",
+    createdAt: "Community starter",
     liked: false,
     likes: 18,
     reaction: null,
@@ -31,7 +39,7 @@ const starterPosts = [
     experience:
       "Work has been heavy lately, but I am learning to pause before I spiral. Breathing exercises helped this week.",
     topics: ["Stress", "Work"],
-    createdAt: "5h ago",
+    createdAt: "Community starter",
     liked: true,
     likes: 27,
     reaction: "support",
@@ -52,6 +60,35 @@ const starterPosts = [
 
 export function CommunityProvider({ children }) {
   const [posts, setPosts] = useState(starterPosts);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    const restore = async () => {
+      try {
+        const raw = await AsyncStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setPosts(parsed);
+          }
+        }
+      } catch (error) {
+        console.warn("Unable to restore community posts", error);
+      } finally {
+        setIsHydrated(true);
+      }
+    };
+    restore();
+  }, []);
+
+  useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(posts)).catch((e) =>
+      console.warn("Unable to save community posts", e),
+    );
+  }, [isHydrated, posts]);
 
   const addPost = ({ title, experience, topics, isAnonymous }) => {
     const newPost = {
@@ -120,12 +157,13 @@ export function CommunityProvider({ children }) {
   const value = useMemo(
     () => ({
       posts,
+      isHydrated,
       addPost,
       toggleLike,
       setReaction,
       addComment,
     }),
-    [posts],
+    [posts, isHydrated],
   );
 
   return (

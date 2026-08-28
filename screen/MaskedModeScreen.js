@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useWellness } from "../context/WellnessContext";
 
 const avatars = [
   require("../assets/avatar1.png"),
@@ -22,11 +23,14 @@ const avatars = [
 export default function MaskedModeScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const [selectedAvatar, setSelectedAvatar] = useState(avatars[0]);
-  const [nickname, setNickname] = useState("");
+  const { profile, updateProfile } = useWellness();
+  const [selectedAvatar, setSelectedAvatar] = useState(
+    avatars[profile.avatarIndex] || avatars[0],
+  );
+  const [nickname, setNickname] = useState(profile.nickname);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}> 
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView
         contentContainerStyle={[
           styles.content,
@@ -39,17 +43,25 @@ export default function MaskedModeScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.title}>You are in Masked Mode</Text>
-        <Text style={styles.subtitle}>Choose an avatar and nickname for private identity.</Text>
+        <Text style={styles.subtitle}>
+          Choose an avatar and nickname for private identity.
+        </Text>
 
         <View style={styles.card}>
           <Image source={selectedAvatar} style={styles.mainAvatar} />
 
           <View style={styles.avatarRow}>
             {avatars.map((avatar, index) => (
-              <TouchableOpacity key={index} onPress={() => setSelectedAvatar(avatar)}>
+              <TouchableOpacity
+                key={index}
+                onPress={() => setSelectedAvatar(avatar)}
+              >
                 <Image
                   source={avatar}
-                  style={[styles.smallAvatar, avatar === selectedAvatar && styles.smallAvatarActive]}
+                  style={[
+                    styles.smallAvatar,
+                    avatar === selectedAvatar && styles.smallAvatarActive,
+                  ]}
                 />
               </TouchableOpacity>
             ))}
@@ -63,17 +75,28 @@ export default function MaskedModeScreen() {
             placeholderTextColor="#8F7B6D"
           />
 
-          <Text style={styles.helperText}>This name will be visible to others.</Text>
+          <Text style={styles.helperText}>
+            This name will be visible to others.
+          </Text>
 
           <View style={styles.previewCard}>
             <Image source={selectedAvatar} style={styles.previewAvatar} />
-            <Text style={styles.previewText}>{nickname || "Your Nickname"}</Text>
+            <Text style={styles.previewText}>
+              {nickname || "Your Nickname"}
+            </Text>
           </View>
         </View>
 
         <TouchableOpacity
           style={styles.button}
-          onPress={() => navigation.navigate("WelcomeAboard")}
+          onPress={() => {
+            updateProfile({
+              profileMode: "masked",
+              nickname: nickname.trim(),
+              avatarIndex: avatars.indexOf(selectedAvatar),
+            });
+            navigation.navigate("SharingMode");
+          }}
         >
           <Text style={styles.buttonText}>Continue as Masked</Text>
         </TouchableOpacity>

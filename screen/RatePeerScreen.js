@@ -5,22 +5,40 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { useChat } from "../context/ChatContext";
 
 export default function RatePeerScreen({ route }) {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const { peerName = "Alex" } = route.params || {};
+  const { peerName = "Alex", conversationId } = route.params || {};
+  const { rateConversation } = useChat();
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState("");
 
   const stars = [1, 2, 3, 4, 5];
 
-  const closeChat = () => {
-    console.log("Rating:", rating, "Feedback:", feedback);
+  const submit = () => {
+    if (rating === 0) {
+      return;
+    }
+    rateConversation(conversationId, {
+      rating,
+      feedback: feedback.trim(),
+      peerName,
+    });
+    Alert.alert(
+      "Thanks for your feedback",
+      "Your rating has been saved and helps improve peer matching.",
+    );
+    navigation.navigate("MainTabs", { screen: "Home" });
+  };
+
+  const endChat = () => {
     navigation.navigate("MainTabs", { screen: "Home" });
   };
 
@@ -82,12 +100,12 @@ export default function RatePeerScreen({ route }) {
         </View>
 
         <View style={styles.buttonsContainer}>
-          <TouchableOpacity style={styles.endChatBtn} onPress={closeChat}>
+          <TouchableOpacity style={styles.endChatBtn} onPress={endChat}>
             <Text style={styles.endChatText}>End Chat</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.submitBtn, rating === 0 && styles.submitBtnDisabled]}
-            onPress={closeChat}
+            onPress={submit}
             disabled={rating === 0}
           >
             <Text style={styles.submitText}>Submit Feedback</Text>

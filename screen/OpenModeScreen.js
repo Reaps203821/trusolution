@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import * as ImagePicker from "expo-image-picker";
 import {
   View,
   Text,
@@ -11,20 +12,42 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useWellness } from "../context/WellnessContext";
 
 export default function OpenModeScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const [image, setImage] = useState(null);
-  const [fullName, setFullName] = useState("");
-  const [bio, setBio] = useState("");
+  const { profile, updateProfile } = useWellness();
+  const [image, setImage] = useState(profile.profileImageUri || null);
+  const [fullName, setFullName] = useState(profile.fullName);
+  const [bio, setBio] = useState(profile.bio);
+
+  useEffect(() => {
+    setImage(profile.profileImageUri || null);
+    setFullName(profile.fullName);
+    setBio(profile.bio);
+  }, [profile.bio, profile.fullName, profile.profileImageUri]);
 
   const pickImage = async () => {
-    alert("Install expo-image-picker for gallery access!");
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      setImage(result.assets[0].uri);
+    }
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}> 
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView
         contentContainerStyle={[
           styles.content,
@@ -37,7 +60,9 @@ export default function OpenModeScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.title}>You are in Open Mode</Text>
-        <Text style={styles.subtitle}>Your visible profile will be shown during chats.</Text>
+        <Text style={styles.subtitle}>
+          Your visible profile will be shown during chats.
+        </Text>
 
         <View style={styles.card}>
           <TouchableOpacity style={styles.imageContainer} onPress={pickImage}>
@@ -70,23 +95,29 @@ export default function OpenModeScreen() {
 
           <View style={styles.previewCard}>
             <Image
-              source={
-                image
-                  ? { uri: image }
-                  : require("../assets/avatar1.png")
-              }
+              source={image ? { uri: image } : require("../assets/avatar1.png")}
               style={styles.previewAvatar}
             />
             <View>
               <Text style={styles.previewName}>{fullName || "Full Name"}</Text>
-              <Text style={styles.previewBio}>{bio || "Short bio will appear here"}</Text>
+              <Text style={styles.previewBio}>
+                {bio || "Short bio will appear here"}
+              </Text>
             </View>
           </View>
         </View>
 
         <TouchableOpacity
           style={styles.button}
-          onPress={() => navigation.navigate("WelcomeAboard")}
+          onPress={() => {
+            updateProfile({
+              profileMode: "open",
+              fullName: fullName.trim(),
+              bio: bio.trim(),
+              profileImageUri: image || "",
+            });
+            navigation.navigate("SharingMode");
+          }}
         >
           <Text style={styles.buttonText}>Continue as Open</Text>
         </TouchableOpacity>

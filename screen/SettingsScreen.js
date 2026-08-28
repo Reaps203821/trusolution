@@ -6,17 +6,22 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { CommonActions, useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useWellness } from "../context/WellnessContext";
+import { useAuth } from "../context/AuthContext";
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const { profile } = useWellness();
+  const { signOut } = useAuth();
+  const profileName = profile.fullName || "Set up your profile";
 
   const settingsItems = [
-    { title: "Account", icon: "person", screen: "AccountSettings" },
     { title: "Privacy", icon: "lock-closed", screen: "PrivacySettings" },
     {
       title: "Notifications",
@@ -32,19 +37,21 @@ export default function SettingsScreen() {
     },
   ];
 
-  const handleLogout = () => {
+const handleLogout = () => {
     Alert.alert("Log Out", "Are you sure you want to log out?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Log Out",
         style: "destructive",
-        onPress: () =>
+        onPress: async () => {
+          await signOut();
           navigation.dispatch(
             CommonActions.reset({
               index: 0,
               routes: [{ name: "SignIn" }],
             }),
-          ),
+          );
+        },
       },
     ]);
   };
@@ -69,6 +76,29 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        <TouchableOpacity
+          style={styles.profileSummary}
+          onPress={() => navigation.navigate("AccountSettings")}
+          accessibilityRole="button"
+          accessibilityLabel="Open account settings"
+        >
+          <View style={styles.summaryAvatar}>
+            {profile.profileImageUri ? (
+              <Image
+                source={{ uri: profile.profileImageUri }}
+                style={styles.summaryAvatarImage}
+              />
+            ) : (
+              <Ionicons name="person" size={22} color="#FFF8EC" />
+            )}
+          </View>
+          <View style={styles.summaryTextWrap}>
+            <Text style={styles.summaryName}>{profileName}</Text>
+            <Text style={styles.summaryMeta}>Profile and photo settings</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#8B7355" />
+        </TouchableOpacity>
+
         <View style={styles.section}>
           {settingsItems.map((item) => (
             <TouchableOpacity
@@ -84,7 +114,9 @@ export default function SettingsScreen() {
                 </View>
                 <View>
                   <Text style={styles.itemText}>{item.title}</Text>
-                  <Text style={styles.itemSubtext}>Open and manage this area</Text>
+                  <Text style={styles.itemSubtext}>
+                    Open and manage this area
+                  </Text>
                 </View>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#8B7355" />
@@ -147,6 +179,27 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 18,
   },
+  profileSummary: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF8EE",
+    padding: 14,
+    borderRadius: 18,
+    marginBottom: 18,
+  },
+  summaryAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#7A4B2F",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  summaryAvatarImage: { width: 48, height: 48 },
+  summaryTextWrap: { flex: 1, marginLeft: 12 },
+  summaryName: { color: "#3D2B1F", fontSize: 16, fontWeight: "800" },
+  summaryMeta: { color: "#8B7355", fontSize: 13, marginTop: 3 },
   settingItem: {
     flexDirection: "row",
     alignItems: "center",

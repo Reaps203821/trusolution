@@ -12,6 +12,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useWellness } from "../context/WellnessContext";
 
 const moodEmojis = [
   { id: "great", emoji: "\u{1F929}", label: "Great" },
@@ -32,7 +33,7 @@ const prompts = [
 export default function JournalScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const [entries, setEntries] = useState([]);
+  const { journalEntries: entries, addJournalEntry, deleteJournalEntry } = useWellness();
   const [showNewEntry, setShowNewEntry] = useState(false);
   const [entryText, setEntryText] = useState("");
   const [selectedMood, setSelectedMood] = useState(null);
@@ -46,15 +47,7 @@ export default function JournalScreen() {
       return;
     }
 
-    const newEntry = {
-      id: Date.now().toString(),
-      text: entryText.trim(),
-      mood: selectedMood,
-      date: new Date().toISOString(),
-      prompt: currentPrompt,
-    };
-
-    setEntries((prev) => [newEntry, ...prev]);
+    addJournalEntry({ text: entryText, mood: selectedMood, prompt: currentPrompt });
     setEntryText("");
     setSelectedMood(null);
     setShowNewEntry(false);
@@ -92,8 +85,7 @@ export default function JournalScreen() {
       {
         text: "Delete",
         style: "destructive",
-        onPress: () =>
-          setEntries((prev) => prev.filter((e) => e.id !== entryId)),
+        onPress: () => deleteJournalEntry(entryId),
       },
     ]);
   };

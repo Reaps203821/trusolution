@@ -3,23 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-nati
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-const weeklyData = [
-  { day: "Mon", value: 2.1 },
-  { day: "Tue", value: 2.8 },
-  { day: "Wed", value: 1.7 },
-  { day: "Thu", value: 3.2 },
-  { day: "Fri", value: 2.9 },
-  { day: "Sat", value: 2.4 },
-  { day: "Sun", value: 3.4 },
-];
-
-const recentEntries = [
-  { mood: "Calm", emoji: "\u{1F60A}", level: "Mild", score: 2, date: "Today" },
-  { mood: "Okay", emoji: "\u{1F642}", level: "Moderate", score: 3, date: "Yesterday" },
-  { mood: "Low", emoji: "\u{1F614}", level: "Strong", score: 4, date: "2 days ago" },
-  { mood: "Calm", emoji: "\u{1F60A}", level: "Mild", score: 2, date: "3 days ago" },
-];
+import { useWellness } from "../context/WellnessContext";
 
 const scoreToLabel = (score) => {
   if (score <= 1.6) return "Stable";
@@ -31,28 +15,51 @@ const scoreToLabel = (score) => {
 export default function MoodProgressScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const { moodEntries } = useWellness();
 
-  const analytics = useMemo(() => {
-    const scores = weeklyData.map((d) => d.value);
+  const { analytics, weeklyData, recentEntries } = useMemo(() => {
+    const today = new Date();
+    const days = Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(today);
+      date.setDate(today.getDate() - (6 - index));
+      return date;
+    });
+
+    const week = days.map((date) => {
+      const dateKey = date.toISOString().slice(0, 10);
+      const entriesForDay = moodEntries.filter(
+        (entry) => entry.createdAt.slice(0, 10) === dateKey,
+      );
+      const value = entriesForDay.length
+        ? entriesForDay.reduce((sum, entry) => sum + entry.severity + 1, 0) /
+          entriesForDay.length
+        : 0;
+      return { day: date.toLocaleDateString(undefined, { weekday: "short" }), value };
+    });
+
+    const scores = week.filter((item) => item.value > 0).map((item) => item.value);
+    if (!scores.length) {
+      return {
+        weeklyData: week,
+        recentEntries: [],
+        analytics: null,
+      };
+    }
     const avg = scores.reduce((sum, item) => sum + item, 0) / scores.length;
     const max = Math.max(...scores);
     const min = Math.min(...scores);
     const last = scores[scores.length - 1];
     const first = scores[0];
     const delta = last - first;
-    const checkInRate = Math.round((recentEntries.length / 7) * 100);
+    const checkInRate = Math.round((scores.length / 7) * 100);
     const stability = Math.max(0, Math.round(100 - (max - min) * 20));
 
     return {
-      avg,
-      max,
-      min,
-      delta,
-      checkInRate,
-      stability,
-      stateLabel: scoreToLabel(avg),
+      weeklyData: week,
+      recentEntries: moodEntries.slice(0, 5),
+      analytics: { avg, max, min, delta, checkInRate, stability, stateLabel: scoreToLabel(avg) },
     };
-  }, []);
+  }, [moodEntries]);
 
   return (
     <View
@@ -80,9 +87,11 @@ export default function MoodProgressScreen() {
           <Text style={styles.heroKicker}>Behavioral Analytics</Text>
           <Text style={styles.heroTitle}>Emotional Trend Dashboard</Text>
           <Text style={styles.heroText}>
-            Your week is currently rated as {analytics.stateLabel.toLowerCase()} based on mood intensity and check-in consistency.
+            {analytics
+              ? `Your recent check-ins are ${analytics.stateLabel.toLowerCase()} based on the intensity you recorded.`
+              : "Save a mood check-in to begin building your private trend."}
           </Text>
-          <View style={styles.heroInlineStats}>
+          {analytics ? <View style={styles.heroInlineStats}>
             <View style={styles.inlineStatPill}>
               <Text style={styles.inlineStatLabel}>Avg Index</Text>
               <Text style={styles.inlineStatValue}>{analytics.avg.toFixed(1)}/5</Text>
@@ -91,10 +100,10 @@ export default function MoodProgressScreen() {
               <Text style={styles.inlineStatLabel}>Stability</Text>
               <Text style={styles.inlineStatValue}>{analytics.stability}%</Text>
             </View>
-          </View>
+          </View> : null}
         </View>
 
-        <View style={styles.kpiRow}>
+        {analytics ? <View style={styles.kpiRow}>
           <View style={styles.kpiCard}>
             <Text style={styles.kpiTitle}>Check-in rate</Text>
             <Text style={styles.kpiValue}>{analytics.checkInRate}%</Text>
@@ -105,7 +114,7 @@ export default function MoodProgressScreen() {
             <Text style={styles.kpiValue}>{analytics.delta >= 0 ? "+" : ""}{analytics.delta.toFixed(1)}</Text>
             <Text style={styles.kpiSub}>{analytics.delta >= 0 ? "Upward stress" : "Downward stress"}</Text>
           </View>
-        </View>
+        </View> : null}
 
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Technical trend (0-5)</Text>
@@ -122,8 +131,8 @@ export default function MoodProgressScreen() {
               ))}
               <View style={styles.barRow}>
                 {weeklyData.map((item) => (
-                  <View key={item.day} style={styles.barWrap}>
-                    <View style={[styles.bar, { height: 16 + item.value * 24 }]} />
+                  <View key={`${item.day}-${item.value}`} style={styles.barWrap}>
+                    <View style={[styles.bar, { height: item.value ? 16 + item.value * 24 : 4 }]} />
                     <Text style={styles.barDay}>{item.day}</Text>
                   </View>
                 ))}
@@ -132,30 +141,32 @@ export default function MoodProgressScreen() {
           </View>
 
           <View style={styles.legendRow}>
-            <Text style={styles.legendText}>Min: {analytics.min.toFixed(1)}</Text>
-            <Text style={styles.legendText}>Max: {analytics.max.toFixed(1)}</Text>
-            <Text style={styles.legendText}>Avg: {analytics.avg.toFixed(1)}</Text>
+            <Text style={styles.legendText}>Min: {analytics ? analytics.min.toFixed(1) : "—"}</Text>
+            <Text style={styles.legendText}>Max: {analytics ? analytics.max.toFixed(1) : "—"}</Text>
+            <Text style={styles.legendText}>Avg: {analytics ? analytics.avg.toFixed(1) : "—"}</Text>
           </View>
         </View>
 
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Recent check-ins</Text>
-          {recentEntries.map((entry) => (
-            <View key={`${entry.date}-${entry.mood}`} style={styles.entryRow}>
+          {recentEntries.length ? recentEntries.map((entry) => (
+            <View key={entry.id} style={styles.entryRow}>
               <Text style={styles.entryMood}>
-                {entry.emoji} {entry.mood}
+                {entry.moodEmoji} {entry.moodLabel}
               </Text>
-              <Text style={styles.entryLevel}>{entry.level}</Text>
-              <Text style={styles.entryScore}>{entry.score.toFixed(1)}</Text>
-              <Text style={styles.entryDate}>{entry.date}</Text>
+              <Text style={styles.entryLevel}>{entry.severityLabel}</Text>
+              <Text style={styles.entryScore}>{entry.severity + 1}.0</Text>
+              <Text style={styles.entryDate}>{new Date(entry.createdAt).toLocaleDateString()}</Text>
             </View>
-          ))}
+          )) : <Text style={styles.insightText}>No check-ins yet. Your entries will appear here after you save them.</Text>}
         </View>
 
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Professional insight</Text>
+          <Text style={styles.sectionTitle}>Gentle insight</Text>
           <Text style={styles.insightText}>
-            Pattern indicates moderate emotional variability with periodic stress peaks. Recommended: maintain daily check-ins and pair high-score days with calming interventions.
+            {analytics
+              ? "This view helps you notice patterns, not diagnose your mental health. If a feeling becomes overwhelming, consider reaching out to someone you trust or a qualified professional."
+              : "Regular check-ins can help you notice what affects your wellbeing over time."}
           </Text>
         </View>
 

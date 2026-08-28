@@ -1,34 +1,33 @@
-import React, { useState } from "react";
+import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useWellness } from "../context/WellnessContext";
 
 export default function PrivacySettingsScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const [anonymousMode, setAnonymousMode] = useState(true);
-  const [profileVisible, setProfileVisible] = useState(false);
-  const [dataSharing, setDataSharing] = useState(false);
+  const { preferences, updatePreferences } = useWellness();
 
   const rows = [
     {
       title: "Default Anonymous Posting",
       subtitle: "Keep your shared experiences anonymous by default.",
-      value: anonymousMode,
-      onChange: setAnonymousMode,
+      value: preferences.anonymousPosting,
+      onChange: (anonymousPosting) => updatePreferences({ anonymousPosting }),
     },
     {
       title: "Profile Visible in Community",
       subtitle: "Let other people in the app discover your public profile.",
-      value: profileVisible,
-      onChange: setProfileVisible,
+      value: preferences.profileVisible,
+      onChange: (profileVisible) => updatePreferences({ profileVisible }),
     },
     {
       title: "Wellness Insights Sharing",
       subtitle: "Share anonymous usage patterns to improve support tools.",
-      value: dataSharing,
-      onChange: setDataSharing,
+      value: preferences.wellnessInsightsSharing,
+      onChange: (wellnessInsightsSharing) => updatePreferences({ wellnessInsightsSharing }),
     },
   ];
 

@@ -1,20 +1,38 @@
-# Trusolution - Fix & Enhancement Progress
+# TruSolution - Live App Conversion Progress
 
-## Phase 1: Version Alignment & Critical Fixes
+## Phase A: Real Authentication System
 
-- [x] 1. Clean up root package.json (version alignment)
-- [x] 2. Fix TabNavigator import (@expo/vector-icons/Ionicons → @expo/vector-icons)
-- [x] 3. Register missing screens (SharingMode, FocusMode) in App.js
-- [x] 4. Add KeyboardAvoidingView to SignIn/SignUp screens for phone responsiveness
+- [x] Create AuthContext (persisted via AsyncStorage)
+- [x] Rework SignUpScreen (validation + account creation)
+- [x] Rework SignInScreen (credential validation + forgot password)
+- [x] Rework SplashScreen (auth-aware routing)
+- [x] Update SettingsScreen logout to use auth context
 
-## Phase 2: New Features
+## Phase B: Real Peer Chat & Matching
 
-- [x] 5. Add Resource Library Screen (mental health articles, hotlines)
-- [x] 6. Add Journal/Diary Screen (private journal entries)
-- [x] 7. Add Notification simulation (bell icon on HomeScreen)
-- [x] 8. Add new screens to navigation and TabNavigator
-- [x] 9. Clean up dist-check folder
+- [x] Create ChatContext (persist messages)
+- [x] Make SearchingScreen auto-transition to PeerChat
+- [x] Make RatePeerScreen save rating/feedback
 
-## Phase 3: Testing
+## Phase C: Persist All Data
 
-- [ ] 10. Run the app to verify all changes work
+- [x] Make CommunityContext persist posts/comments
+- [x] Make AppointmentContext persist appointments
+
+## Phase D: Functional Settings & Info Screens
+
+- [x] DataStorageScreen: real computed storage + clear cache
+- [x] HelpSupportScreen: functional send support request
+- [x] NotificationSettingsScreen: persist settings
+- [x] ResourceLibraryScreen: full article content viewer
+
+## Phase E: Wire Up Orphaned Screens
+
+- [x] Connect SharingMode & FocusMode into onboarding flow
+- [x] Persist sharingMode & focusMode preferences in WellnessContext
+- [x] Route mode screens (Ghost/Masked/Open) through SharingMode → FocusMode → WelcomeAboard
+
+## Testing
+
+- [x] Code review: all screens wired to real contexts (auth, chat, community, appointments, wellness)
+- [ ] Run the app in Expo Go to verify all changes work end-to-end
