@@ -12,6 +12,7 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAppointments } from "../context/AppointmentContext";
+import { hapticSuccess } from "../lib/haptics";
 
 export default function TherapistBookingScreen() {
   const navigation = useNavigation();
@@ -77,6 +78,7 @@ export default function TherapistBookingScreen() {
       return;
     }
 
+    hapticSuccess();
     navigation.navigate("TherapistBookingSuccess", { appointment });
   };
 

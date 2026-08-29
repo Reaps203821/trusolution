@@ -38,6 +38,7 @@ export default function PeerChatScreen({ route }) {
 
   const conversation = getConversation(resolvedId);
   const [inputText, setInputText] = useState("");
+  const [isPeerTyping, setIsPeerTyping] = useState(false);
   const flatListRef = useRef();
 
   // Ensure the conversation exists in state.
@@ -80,7 +81,7 @@ export default function PeerChatScreen({ route }) {
 
   useEffect(() => {
     flatListRef.current?.scrollToEnd({ animated: false });
-  }, [conversation.messages.length]);
+  }, [conversation.messages.length, isPeerTyping]);
 
   const statusLabel =
     chatType === "therapist"
@@ -88,6 +89,17 @@ export default function PeerChatScreen({ route }) {
       : `Online \u2022 ${conversationStyle} style`;
 
   const messages = conversation.messages || [];
+
+  const LISTENER_REPLIES = [
+    "I'm listening. Please continue...",
+    "Take your time, I'm here.",
+    "Mm, I hear you. Go on.",
+  ];
+  const ADVICE_REPLIES = [
+    "That makes sense. Tell me a little more about what happened.",
+    "Thank you for sharing that. How did that make you feel?",
+    "I appreciate you opening up. What do you think led to that?",
+  ];
 
   const sendMessage = () => {
     if (!inputText.trim()) {
@@ -104,13 +116,25 @@ export default function PeerChatScreen({ route }) {
     });
     setInputText("");
 
+    const pool =
+      conversationStyle === "Listener" ? LISTENER_REPLIES : ADVICE_REPLIES;
+    const replyText = pool[Math.floor(Math.random() * pool.length)];
+
+    // Simulate a human typing pace: a short pause before the indicator
+    // appears, then a duration roughly proportional to reply length.
+    const typingDuration = Math.min(
+      2800,
+      800 + replyText.length * 28,
+    );
+
     setTimeout(() => {
-      const replyText =
-        conversationStyle === "Listener"
-          ? "I'm listening. Please continue..."
-          : "That makes sense. Tell me a little more about what happened.";
+      setIsPeerTyping(true);
+    }, 350);
+
+    setTimeout(() => {
+      setIsPeerTyping(false);
       addReply(resolvedId, peerName, replyText);
-    }, 1200);
+    }, 350 + typingDuration);
   };
 
   const renderMessage = ({ item, index }) => {
@@ -218,6 +242,21 @@ export default function PeerChatScreen({ route }) {
             { paddingBottom: 12 + insets.bottom },
           ]}
         />
+
+        {isPeerTyping && (
+          <View style={styles.typingRow}>
+            <View style={styles.peerAvatar}>
+              <Text style={styles.peerAvatarText}>
+                {peerName.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+            <View style={styles.typingBubble}>
+              <View style={styles.typingDot} />
+              <View style={[styles.typingDot, styles.typingDotMid]} />
+              <View style={styles.typingDot} />
+            </View>
+          </View>
+        )}
 
         <View
           style={[
@@ -369,6 +408,32 @@ const styles = StyleSheet.create({
     color: "#4A3928",
     fontWeight: "800",
     fontSize: 12,
+  },
+  typingRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+  },
+  typingBubble: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#F0E3D2",
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  typingDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#9A8267",
+    opacity: 0.6,
+  },
+  typingDotMid: {
+    opacity: 0.9,
   },
   bubble: {
     maxWidth: "78%",

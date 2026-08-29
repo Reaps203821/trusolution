@@ -11,6 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useWellness } from "../context/WellnessContext";
+import { hapticSelect, hapticSuccess } from "../lib/haptics";
 
 const TRACK_WIDTH = 280;
 
@@ -112,7 +113,10 @@ export default function MoodCheckScreen() {
                       backgroundColor: "#FFF7EA",
                     },
                   ]}
-                  onPress={() => setSelectedMood(mood)}
+                  onPress={() => {
+                    hapticSelect();
+                    setSelectedMood(mood);
+                  }}
                 >
                   <Text style={styles.moodEmoji}>{mood.emoji}</Text>
                   <Text
@@ -202,6 +206,7 @@ export default function MoodCheckScreen() {
         <TouchableOpacity
           style={styles.saveButton}
           onPress={() => {
+            hapticSuccess();
             addMoodEntry({
               moodId: selectedMood.id,
               moodLabel: selectedMood.label,
@@ -210,6 +215,7 @@ export default function MoodCheckScreen() {
               severityLabel: severityLabels[severity],
             });
             navigation.navigate("MoodCheckSuccess", {
+              moodId: selectedMood.id,
               moodLabel: selectedMood.label,
               moodEmoji: selectedMood.emoji,
               severityLabel: severityLabels[severity],

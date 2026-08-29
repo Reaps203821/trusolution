@@ -10,7 +10,7 @@ import {
   Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useWellness } from "../context/WellnessContext";
 
@@ -30,16 +30,60 @@ const prompts = [
   "Write about a goal you're working toward.",
 ];
 
+// Prompts targeted to the mood someone just logged on the Mood Check screen,
+// so the journal meets them where they are instead of a generic question.
+const MOOD_TARGETED_PROMPTS = {
+  calm: ["What's contributing to this sense of calm today?"],
+  okay: ["What would make today even a little better?"],
+  low: [
+    "What's weighing on you right now?",
+    "What's one small thing that might help you feel even 5% better?",
+  ],
+  sad: [
+    "What's making you feel this way? It's okay to just describe it.",
+    "Is there something you need right now that you're not getting?",
+  ],
+  anxious: [
+    "What thought keeps looping? Try writing it out in full.",
+    "What's the worst-case scenario, and how would you actually handle it?",
+  ],
+  angry: [
+    "What boundary feels crossed right now?",
+    "What do you wish you could say to someone, if there were no consequences?",
+  ],
+};
+
+// Home screen's mood-check vocabulary doesn't exactly match the journal's
+// mood-chip vocabulary, so map between them for the mood pre-select.
+const HOME_MOOD_TO_JOURNAL_MOOD = {
+  calm: "good",
+  okay: "okay",
+  low: "low",
+  sad: "rough",
+  anxious: "low",
+  angry: "rough",
+};
+
 export default function JournalScreen() {
   const navigation = useNavigation();
+  const route = useRoute();
   const insets = useSafeAreaInsets();
   const { journalEntries: entries, addJournalEntry, deleteJournalEntry } = useWellness();
-  const [showNewEntry, setShowNewEntry] = useState(false);
+
+  const incomingMoodId = route.params?.moodId;
+  const targetedPrompts = incomingMoodId
+    ? MOOD_TARGETED_PROMPTS[incomingMoodId]
+    : null;
+  const initialPrompt = targetedPrompts
+    ? targetedPrompts[Math.floor(Math.random() * targetedPrompts.length)]
+    : prompts[Math.floor(Math.random() * prompts.length)];
+
+  const [showNewEntry, setShowNewEntry] = useState(Boolean(incomingMoodId));
   const [entryText, setEntryText] = useState("");
-  const [selectedMood, setSelectedMood] = useState(null);
-  const [currentPrompt, setCurrentPrompt] = useState(
-    prompts[Math.floor(Math.random() * prompts.length)],
+  const [selectedMood, setSelectedMood] = useState(
+    incomingMoodId ? HOME_MOOD_TO_JOURNAL_MOOD[incomingMoodId] || null : null,
   );
+  const [currentPrompt, setCurrentPrompt] = useState(initialPrompt);
 
   const handleSaveEntry = () => {
     if (!entryText.trim()) {
@@ -121,7 +165,7 @@ export default function JournalScreen() {
           </View>
           <Text style={styles.heroTitle}>Private Diary</Text>
           <Text style={styles.heroSubtitle}>
-            Your thoughts are private and stored locally on this device.
+            Your thoughts are private — only you can see your entries.
           </Text>
         </View>
 

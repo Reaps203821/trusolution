@@ -7,6 +7,10 @@ import React, {
 } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./AuthContext";
+import {
+  scheduleAppointmentReminders,
+  cancelAppointmentReminders,
+} from "../lib/notifications";
 
 const AppointmentContext = createContext(null);
 
@@ -111,6 +115,7 @@ export function AppointmentProvider({ children }) {
 
     const newAppointment = rowToAppointment(data);
     setAppointments((prev) => [newAppointment, ...prev]);
+    scheduleAppointmentReminders(newAppointment);
     return newAppointment;
   };
 
@@ -120,6 +125,8 @@ export function AppointmentProvider({ children }) {
         item.id === appointmentId ? { ...item, status: "Canceled" } : item,
       ),
     );
+
+    cancelAppointmentReminders(appointmentId);
 
     const { error } = await supabase
       .from("appointments")
@@ -142,6 +149,11 @@ export function AppointmentProvider({ children }) {
         item.id === appointmentId ? { ...item, date: resolvedDate } : item,
       ),
     );
+
+    cancelAppointmentReminders(appointmentId);
+    if (current) {
+      scheduleAppointmentReminders({ ...current, date: resolvedDate });
+    }
 
     const { error } = await supabase
       .from("appointments")

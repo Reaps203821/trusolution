@@ -228,6 +228,30 @@ export function CommunityProvider({ children }) {
     );
   };
 
+  const reportPost = async (postId, reason) => {
+    const { error } = await supabase
+      .from("community_reports")
+      .insert({ post_id: postId, reporter_id: currentUserId, reason });
+
+    if (error) {
+      console.warn("Unable to file report", error.message);
+      return false;
+    }
+    return true;
+  };
+
+  const reportComment = async (commentId, reason) => {
+    const { error } = await supabase
+      .from("community_reports")
+      .insert({ comment_id: commentId, reporter_id: currentUserId, reason });
+
+    if (error) {
+      console.warn("Unable to file report", error.message);
+      return false;
+    }
+    return true;
+  };
+
   const value = useMemo(
     () => ({
       posts,
@@ -236,6 +260,8 @@ export function CommunityProvider({ children }) {
       toggleLike,
       setReaction,
       addComment,
+      reportPost,
+      reportComment,
     }),
     [posts, isHydrated, currentUserId],
   );

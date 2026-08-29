@@ -41,6 +41,7 @@ import HelpSupportScreen from "./screen/HelpSupportScreen";
 import AboutTruSolutionScreen from "./screen/AboutTruSolutionScreen";
 import JournalScreen from "./screen/JournalScreen";
 import SupportPlanScreen from "./screen/SupportPlanScreen";
+import CrisisResourcesScreen from "./screen/CrisisResourcesScreen";
 import TabNavigator from "./TabNavigator";
 import { CommunityProvider } from "./context/CommunityContext";
 import { AppointmentProvider } from "./context/AppointmentContext";
@@ -197,6 +198,10 @@ export default function App() {
                     <Stack.Screen
                       name="SupportPlan"
                       component={SupportPlanScreen}
+                    />
+                    <Stack.Screen
+                      name="CrisisResources"
+                      component={CrisisResourcesScreen}
                     />
                     <Stack.Screen
                       name="MainTabs"

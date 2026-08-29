@@ -72,6 +72,20 @@ export default function HomeScreen() {
   const latestMoodEntry = moodEntries[0];
   const displayName = profile.fullName.trim() || "there";
 
+  const LOW_MOOD_IDS = ["low", "sad", "anxious", "angry"];
+  const recentLowStreak = (() => {
+    let streak = 0;
+    for (const entry of moodEntries) {
+      if (LOW_MOOD_IDS.includes(entry.moodId)) {
+        streak += 1;
+      } else {
+        break;
+      }
+    }
+    return streak;
+  })();
+  const showSupportBanner = recentLowStreak >= 3;
+
   useFocusEffect(
     React.useCallback(() => {
       if (Platform.OS !== "android") {
@@ -125,6 +139,15 @@ export default function HomeScreen() {
 
           <View style={styles.headerActions}>
             <TouchableOpacity
+              onPress={() => navigation.navigate("CrisisResources")}
+              accessibilityRole="button"
+              accessibilityLabel="Crisis support"
+              style={styles.headerButton}
+            >
+              <Ionicons name="help-buoy-outline" size={22} color="#A84B3C" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
               onPress={() => navigation.navigate("Journal")}
               style={styles.headerButton}
             >
@@ -148,6 +171,25 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {showSupportBanner && (
+          <TouchableOpacity
+            style={styles.supportBanner}
+            onPress={() => navigation.navigate("CrisisResources")}
+            activeOpacity={0.9}
+          >
+            <Ionicons name="help-buoy-outline" size={20} color="#FFF9F3" />
+            <View style={styles.supportBannerTextWrap}>
+              <Text style={styles.supportBannerTitle}>
+                It looks like it's been a tough few check-ins
+              </Text>
+              <Text style={styles.supportBannerSubtitle}>
+                Tap here for your coping steps and support contacts.
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#FFF9F3" />
+          </TouchableOpacity>
+        )}
 
         <View style={styles.heroCard}>
           <View style={styles.heroTop}>
@@ -377,7 +419,7 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   greeting: {
-    fontSize: 26,
+    fontSize: 23,
     fontWeight: "800",
     color: "#3D2B1F",
     marginBottom: 4,
@@ -389,8 +431,8 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
   headerButton: {
-    width: 42,
-    height: 42,
+    width: 40,
+    height: 40,
     borderRadius: 21,
     backgroundColor: "#FFF8EE",
     alignItems: "center",
@@ -407,6 +449,28 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
+  },
+  supportBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#A84B3C",
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: 16,
+  },
+  supportBannerTextWrap: {
+    flex: 1,
+  },
+  supportBannerTitle: {
+    color: "#FFF9F3",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  supportBannerSubtitle: {
+    color: "#FFF3EB",
+    fontSize: 12,
+    marginTop: 2,
   },
   heroCard: {
     backgroundColor: "#7A4B2F",

@@ -8,9 +8,13 @@ export default function MoodCheckSuccessScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const insets = useSafeAreaInsets();
+  const moodId = route.params?.moodId;
   const moodLabel = route.params?.moodLabel || "Calm";
   const moodEmoji = route.params?.moodEmoji || "\u{1F60A}";
   const severityLabel = route.params?.severityLabel || "Moderate";
+  const showJournalPrompt = ["low", "sad", "anxious", "angry"].includes(
+    moodId,
+  );
 
   return (
     <View
@@ -31,6 +35,19 @@ export default function MoodCheckSuccessScreen() {
           Great job checking in. Every entry helps you understand your emotional
           patterns better.
         </Text>
+
+        {showJournalPrompt && (
+          <TouchableOpacity
+            style={styles.journalPromptButton}
+            onPress={() => navigation.navigate("Journal", { moodId })}
+            activeOpacity={0.9}
+          >
+            <Ionicons name="create-outline" size={18} color="#FFF9F3" />
+            <Text style={styles.journalPromptText}>
+              Want to write about it? Open Journal
+            </Text>
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity
           style={styles.primaryButton}
@@ -95,6 +112,22 @@ const styles = StyleSheet.create({
     color: "#8A6A57",
     textAlign: "center",
     marginBottom: 22,
+  },
+  journalPromptButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    width: "100%",
+    backgroundColor: "#A84B3C",
+    borderRadius: 16,
+    paddingVertical: 13,
+    marginBottom: 14,
+  },
+  journalPromptText: {
+    color: "#FFF9F3",
+    fontSize: 14,
+    fontWeight: "800",
   },
   primaryButton: {
     width: "100%",

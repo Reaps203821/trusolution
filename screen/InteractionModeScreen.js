@@ -6,10 +6,14 @@ import {
   TouchableOpacity,
   ScrollView,
   TextInput,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useCommunity } from "../context/CommunityContext";
+import { hapticLight } from "../lib/haptics";
 
 const reactions = [
   { id: "support", emoji: "🤍", label: "Support" },
@@ -17,8 +21,24 @@ const reactions = [
   { id: "hug", emoji: "🤗", label: "Hug" },
 ];
 
-function FeedCard({ post, onLike, onReaction, onComment }) {
-  const [commentText, setCommentText] = useState("");
+const formatRelativeTime = (isoString) => {
+  if (!isoString) return "";
+  const then = new Date(isoString).getTime();
+  if (Number.isNaN(then)) return "";
+  const diffSeconds = Math.max(0, Math.floor((Date.now() - then) / 1000));
+
+  if (diffSeconds < 60) return "Just now";
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return new Date(isoString).toLocaleDateString();
+};
+
+function FeedCard({ post, onLike, onReaction, onComment, onReport }) {
+  const [commentText, setCommentText] = useState(""); 
   const [showComments, setShowComments] = useState(false);
 
   const submitComment = () => {
@@ -31,6 +51,21 @@ function FeedCard({ post, onLike, onReaction, onComment }) {
     setShowComments(true);
   };
 
+  const handleReportPress = () => {
+    Alert.alert(
+      "Report this post?",
+      "We'll review it for anything that goes against community guidelines.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Report",
+          style: "destructive",
+          onPress: () => onReport(),
+        },
+      ],
+    );
+  };
+
   return (
     <View style={styles.postCard}>
       <View style={styles.postHeader}>
@@ -39,8 +74,14 @@ function FeedCard({ post, onLike, onReaction, onComment }) {
         </View>
         <View style={styles.postMeta}>
           <Text style={styles.authorName}>{post.author}</Text>
-          <Text style={styles.postTime}>{post.createdAt}</Text>
+          <Text style={styles.postTime}>{formatRelativeTime(post.createdAt)}</Text>
         </View>
+        <TouchableOpacity
+          onPress={handleReportPress}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="flag-outline" size={18} color="#8A7963" />
+        </TouchableOpacity>
       </View>
 
       <Text style={styles.postTitle}>{post.title}</Text>
@@ -135,7 +176,18 @@ function FeedCard({ post, onLike, onReaction, onComment }) {
 
 export default function InteractionModeScreen() {
   const insets = useSafeAreaInsets();
-  const { posts, toggleLike, setReaction, addComment } = useCommunity();
+  const navigation = useNavigation();
+  const { posts, isHydrated, toggleLike, setReaction, addComment, reportPost } =
+    useCommunity();
+
+  const handleReport = async (postId) => {
+    const ok = await reportPost(postId);
+    if (ok) {
+      Alert.alert("Thanks", "We've received your report and will take a look.");
+    } else {
+      Alert.alert("Something went wrong", "Please try again.");
+    }
+  };
 
   return (
     <View
@@ -149,10 +201,18 @@ export default function InteractionModeScreen() {
         contentContainerStyle={styles.content}
       >
         <View style={styles.header}>
-          <Text style={styles.title}>Community Feed</Text>
-          <Text style={styles.subtitle}>
-            Shared experiences from people using the app
-          </Text>
+          <View style={styles.headerTextWrap}>
+            <Text style={styles.title}>Community Feed</Text>
+            <Text style={styles.subtitle}>
+              Shared experiences from people using the app
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.newPostButton}
+            onPress={() => navigation.navigate("ShareExperience")}
+          >
+            <Ionicons name="add" size={22} color="#FFF9F3" />
+          </TouchableOpacity>
         </View>
 
 <View style={styles.feedIntro}>
@@ -163,15 +223,41 @@ export default function InteractionModeScreen() {
           </Text>
         </View>
 
-        {posts.map((post) => (
-          <FeedCard
-            key={post.id}
-            post={post}
-            onLike={() => toggleLike(post.id)}
-            onReaction={(reaction) => setReaction(post.id, reaction)}
-            onComment={(text) => addComment(post.id, text)}
-          />
-        ))}
+        {!isHydrated ? (
+          <View style={styles.loadingState}>
+            <ActivityIndicator color="#7A4B2F" />
+            <Text style={styles.loadingText}>Loading the feed...</Text>
+          </View>
+        ) : posts.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Ionicons name="chatbubbles-outline" size={48} color="#A67C5B" />
+            <Text style={styles.emptyTitle}>No posts yet</Text>
+            <Text style={styles.emptyText}>
+              Be the first to share something with the community.
+            </Text>
+            <TouchableOpacity
+              style={styles.emptyStateButton}
+              onPress={() => navigation.navigate("ShareExperience")}
+            >
+              <Ionicons name="add-circle" size={18} color="#FFF9F3" />
+              <Text style={styles.emptyStateButtonText}>Share Experience</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          posts.map((post) => (
+            <FeedCard
+              key={post.id}
+              post={post}
+              onLike={() => {
+                hapticLight();
+                toggleLike(post.id);
+              }}
+              onReaction={(reaction) => setReaction(post.id, reaction)}
+              onComment={(text) => addComment(post.id, text)}
+              onReport={() => handleReport(post.id)}
+            />
+          ))
+        )}
       </ScrollView>
     </View>
   );
@@ -187,8 +273,50 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 20,
   },
+  loadingState: {
+    alignItems: "center",
+    paddingVertical: 40,
+    gap: 10,
+  },
+  loadingText: {
+    fontSize: 13,
+    color: "#8A6A57",
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: 40,
+    paddingHorizontal: 24,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#3D2B1F",
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  emptyText: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: "#8A6A57",
+    textAlign: "center",
+  },
   header: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
     marginBottom: 14,
+  },
+  headerTextWrap: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  newPostButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#7A4B2F",
+    alignItems: "center",
+    justifyContent: "center",
   },
   title: {
     fontSize: 28,
@@ -200,6 +328,21 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     color: "#7A614F",
+  },
+  emptyStateButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#7A4B2F",
+    borderRadius: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    marginTop: 16,
+  },
+  emptyStateButtonText: {
+    color: "#FFF9F3",
+    fontSize: 14,
+    fontWeight: "800",
   },
   feedIntro: {
     flexDirection: "row",
