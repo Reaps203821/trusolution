@@ -8,7 +8,6 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -16,6 +15,7 @@ import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
+import { useAlert } from "../context/AlertContext";
 
 const validateEmail = (email) => /\S+@\S+\.\S+/.test(email.trim());
 
@@ -23,6 +23,7 @@ const SignInScreen = () => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { signIn, forgotPassword } = useAuth();
+  const { alert } = useAlert();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -107,7 +108,7 @@ const handleSignIn = async () => {
     setShowForgot(false);
     setForgotEmail("");
     setForgotError("");
-    Alert.alert("Reset email sent", result.message);
+    alert("Reset email sent", result.message);
   };
 
   return (

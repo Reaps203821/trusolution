@@ -5,18 +5,19 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput,
-  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useChat } from "../context/ChatContext";
+import { useAlert } from "../context/AlertContext";
 
 export default function RatePeerScreen({ route }) {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { peerName = "Alex", conversationId } = route.params || {};
   const { rateConversation } = useChat();
+  const { alert } = useAlert();
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState("");
 
@@ -31,7 +32,7 @@ export default function RatePeerScreen({ route }) {
       feedback: feedback.trim(),
       peerName,
     });
-    Alert.alert(
+    alert(
       "Thanks for your feedback",
       "Your rating has been saved and helps improve peer matching.",
     );

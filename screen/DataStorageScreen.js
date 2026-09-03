@@ -5,12 +5,12 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAlert } from "../context/AlertContext";
 
 const formatBytes = (bytes) => {
   if (!bytes || bytes <= 0) {
@@ -25,6 +25,7 @@ const formatBytes = (bytes) => {
 export default function DataStorageScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const { alert } = useAlert();
   const [totalBytes, setTotalBytes] = useState(0);
   const [entries, setEntries] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -56,7 +57,7 @@ export default function DataStorageScreen() {
   }, [computeStorage]);
 
   const clearCache = () => {
-    Alert.alert(
+    alert(
       "Clear Temporary Cache",
       "This will remove temporary app data. Your saved profile, journal, chats, and posts will be kept.",
       [
@@ -69,7 +70,7 @@ export default function DataStorageScreen() {
             // Remove only non-essential caches if any; for now re-compute.
             await computeStorage();
             setIsLoading(false);
-            Alert.alert("Cleared", "Temporary cache has been cleared.");
+            alert("Cleared", "Temporary cache has been cleared.");
           },
         },
       ],

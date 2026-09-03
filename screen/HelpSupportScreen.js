@@ -6,18 +6,19 @@ import {
   TouchableOpacity,
   ScrollView,
   TextInput,
-  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAlert } from "../context/AlertContext";
 
 const SUPPORT_KEY = "@trusolution/support-requests-v1";
 
 export default function HelpSupportScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const { alert } = useAlert();
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
 
@@ -39,7 +40,7 @@ export default function HelpSupportScreen() {
   const sendSupportRequest = async () => {
     const trimmed = message.trim();
     if (!trimmed) {
-      Alert.alert("Empty Request", "Please describe what you need help with.");
+      alert("Empty Request", "Please describe what you need help with.");
       return;
     }
 
@@ -60,7 +61,7 @@ export default function HelpSupportScreen() {
     }
 
     setMessage("");
-    Alert.alert(
+    alert(
       "Request Sent",
       "Thanks for reaching out. Our support team has received your message and will get back to you soon.",
       [{ text: "OK" }],

@@ -48,6 +48,7 @@ import { AppointmentProvider } from "./context/AppointmentContext";
 import { WellnessProvider } from "./context/WellnessContext";
 import { AuthProvider } from "./context/AuthContext";
 import { ChatProvider } from "./context/ChatContext";
+import { AlertProvider } from "./context/AlertContext";
 import { StyleSheet } from "react-native";
 
 const Stack = createNativeStackNavigator();
@@ -55,7 +56,8 @@ const Stack = createNativeStackNavigator();
 export default function App() {
   return (
     <SafeAreaProvider>
-      <AuthProvider>
+      <AlertProvider>
+        <AuthProvider>
         <WellnessProvider>
           <ChatProvider>
             <CommunityProvider>
@@ -215,6 +217,7 @@ export default function App() {
           </ChatProvider>
         </WellnessProvider>
       </AuthProvider>
+      </AlertProvider>
     </SafeAreaProvider>
   );
 }

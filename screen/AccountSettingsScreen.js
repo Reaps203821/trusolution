@@ -8,18 +8,19 @@ import {
   TouchableOpacity,
   ScrollView,
   TextInput,
-  Alert,
   Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useWellness } from "../context/WellnessContext";
+import { useAlert } from "../context/AlertContext";
 
 export default function AccountSettingsScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { profile, updateProfile } = useWellness();
+  const { alert } = useAlert();
   const [fullName, setFullName] = useState(profile.fullName);
   const [email, setEmail] = useState(profile.email);
   const [username, setUsername] = useState(profile.username);
@@ -45,7 +46,7 @@ export default function AccountSettingsScreen() {
   const pickProfilePhoto = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert("Photo permission needed", "Allow gallery access to choose a profile photo.");
+      alert("Photo permission needed", "Allow gallery access to choose a profile photo.");
       return;
     }
 

@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   greeting: {
-    fontSize: 23,
+    fontSize: 26,
     fontWeight: "800",
     color: "#3D2B1F",
     marginBottom: 4,
@@ -431,8 +431,8 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
   headerButton: {
-    width: 40,
-    height: 40,
+    width: 42,
+    height: 42,
     borderRadius: 21,
     backgroundColor: "#FFF8EE",
     alignItems: "center",

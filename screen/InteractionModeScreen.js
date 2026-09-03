@@ -6,13 +6,13 @@ import {
   TouchableOpacity,
   ScrollView,
   TextInput,
-  Alert,
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useCommunity } from "../context/CommunityContext";
+import { useAlert } from "../context/AlertContext";
 import { hapticLight } from "../lib/haptics";
 
 const reactions = [
@@ -40,6 +40,7 @@ const formatRelativeTime = (isoString) => {
 function FeedCard({ post, onLike, onReaction, onComment, onReport }) {
   const [commentText, setCommentText] = useState(""); 
   const [showComments, setShowComments] = useState(false);
+  const { alert } = useAlert();
 
   const submitComment = () => {
     const trimmed = commentText.trim();
@@ -52,7 +53,7 @@ function FeedCard({ post, onLike, onReaction, onComment, onReport }) {
   };
 
   const handleReportPress = () => {
-    Alert.alert(
+    alert(
       "Report this post?",
       "We'll review it for anything that goes against community guidelines.",
       [
@@ -179,13 +180,14 @@ export default function InteractionModeScreen() {
   const navigation = useNavigation();
   const { posts, isHydrated, toggleLike, setReaction, addComment, reportPost } =
     useCommunity();
+  const { alert } = useAlert();
 
   const handleReport = async (postId) => {
     const ok = await reportPost(postId);
     if (ok) {
-      Alert.alert("Thanks", "We've received your report and will take a look.");
+      alert("Thanks", "We've received your report and will take a look.");
     } else {
-      Alert.alert("Something went wrong", "Please try again.");
+      alert("Something went wrong", "Please try again.");
     }
   };
 

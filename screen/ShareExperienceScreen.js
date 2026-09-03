@@ -7,13 +7,13 @@ import {
   TouchableOpacity,
   ScrollView,
   FlatList,
-  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useCommunity } from "../context/CommunityContext";
 import { useWellness } from "../context/WellnessContext";
+import { useAlert } from "../context/AlertContext";
 
 const topics = [
   "Anxiety",
@@ -33,6 +33,7 @@ export default function ShareExperienceScreen() {
   const insets = useSafeAreaInsets();
   const { addPost } = useCommunity();
   const { preferences, updatePreferences } = useWellness();
+  const { alert } = useAlert();
   const [title, setTitle] = useState("");
   const [experience, setExperience] = useState("");
   const [selectedTopics, setSelectedTopics] = useState([]);
@@ -61,14 +62,14 @@ export default function ShareExperienceScreen() {
     setIsLoading(false);
 
     if (!newPost) {
-      Alert.alert(
+      alert(
         "Something went wrong",
         "We couldn't post your experience. Please try again.",
       );
       return;
     }
 
-Alert.alert("Posted", "Your experience has been added to the community feed.", [
+    alert("Posted", "Your experience has been added to the community feed.", [
       {
         text: "View Feed",
         onPress: () => {

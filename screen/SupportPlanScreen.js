@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import {
-  Alert,
   Linking,
   ScrollView,
   StyleSheet,
@@ -13,11 +12,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useWellness } from "../context/WellnessContext";
+import { useAlert } from "../context/AlertContext";
 
 export default function SupportPlanScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { supportPlan, updateSupportPlan } = useWellness();
+  const { alert } = useAlert();
   const [warningSigns, setWarningSigns] = useState(supportPlan.warningSigns);
   const [copingSteps, setCopingSteps] = useState(supportPlan.copingSteps);
   const [contactName, setContactName] = useState("");
@@ -30,12 +31,12 @@ export default function SupportPlanScreen() {
 
   const savePlan = () => {
     updateSupportPlan({ warningSigns: warningSigns.trim(), copingSteps: copingSteps.trim() });
-    Alert.alert("Support plan saved", "Your plan is saved on this device.");
+    alert("Support plan saved", "Your plan has been saved.");
   };
 
   const addTrustedContact = () => {
     if (!contactName.trim() || !contactPhone.trim()) {
-      Alert.alert("Add contact details", "Enter a name and phone number first.");
+      alert("Add contact details", "Enter a name and phone number first.");
       return;
     }
     updateSupportPlan({
@@ -53,7 +54,7 @@ export default function SupportPlanScreen() {
     if (await Linking.canOpenURL(url)) {
       Linking.openURL(url);
     } else {
-      Alert.alert("Unable to call", "Your device could not open the phone app.");
+      alert("Unable to call", "Your device could not open the phone app.");
     }
   };
 

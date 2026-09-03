@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Alert,
   Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -13,12 +12,14 @@ import { CommonActions, useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useWellness } from "../context/WellnessContext";
 import { useAuth } from "../context/AuthContext";
+import { useAlert } from "../context/AlertContext";
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { profile } = useWellness();
   const { signOut } = useAuth();
+  const { alert } = useAlert();
   const profileName = profile.fullName || "Set up your profile";
 
   const settingsItems = [
@@ -38,7 +39,7 @@ export default function SettingsScreen() {
   ];
 
 const handleLogout = () => {
-    Alert.alert("Log Out", "Are you sure you want to log out?", [
+    alert("Log Out", "Are you sure you want to log out?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Log Out",

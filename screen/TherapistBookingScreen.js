@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Alert,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -13,12 +12,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAppointments } from "../context/AppointmentContext";
 import { hapticSuccess } from "../lib/haptics";
+import { useAlert } from "../context/AlertContext";
 
 export default function TherapistBookingScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const insets = useSafeAreaInsets();
   const { addAppointment } = useAppointments();
+  const { alert } = useAlert();
 
   const therapist = route.params?.therapist || {
     name: "Dr. Sarah Johnson",
@@ -71,7 +72,7 @@ export default function TherapistBookingScreen() {
     });
 
     if (!appointment) {
-      Alert.alert(
+      alert(
         "Booking failed",
         "We couldn't confirm your appointment. Please try again.",
       );

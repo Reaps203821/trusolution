@@ -6,13 +6,13 @@ import {
   TouchableOpacity,
   ScrollView,
   TextInput,
-  Alert,
   Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useWellness } from "../context/WellnessContext";
+import { useAlert } from "../context/AlertContext";
 
 const moodEmojis = [
   { id: "great", emoji: "\u{1F929}", label: "Great" },
@@ -69,6 +69,7 @@ export default function JournalScreen() {
   const route = useRoute();
   const insets = useSafeAreaInsets();
   const { journalEntries: entries, addJournalEntry, deleteJournalEntry } = useWellness();
+  const { alert } = useAlert();
 
   const incomingMoodId = route.params?.moodId;
   const targetedPrompts = incomingMoodId
@@ -87,7 +88,7 @@ export default function JournalScreen() {
 
   const handleSaveEntry = () => {
     if (!entryText.trim()) {
-      Alert.alert("Empty Entry", "Please write something before saving.");
+      alert("Empty Entry", "Please write something before saving.");
       return;
     }
 
@@ -96,7 +97,7 @@ export default function JournalScreen() {
     setSelectedMood(null);
     setShowNewEntry(false);
     setCurrentPrompt(prompts[Math.floor(Math.random() * prompts.length)]);
-    Alert.alert("Saved!", "Your journal entry has been saved.");
+    alert("Saved!", "Your journal entry has been saved.");
   };
 
   const formatDate = (isoString) => {
@@ -124,7 +125,7 @@ export default function JournalScreen() {
   };
 
   const deleteEntry = (entryId) => {
-    Alert.alert("Delete Entry", "Are you sure you want to delete this entry?", [
+    alert("Delete Entry", "Are you sure you want to delete this entry?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",

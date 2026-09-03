@@ -8,12 +8,12 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../context/AuthContext";
+import { useAlert } from "../context/AlertContext";
 
 const validateEmail = (email) => /\S+@\S+\.\S+/.test(email.trim());
 
@@ -21,6 +21,7 @@ const SignUpScreen = () => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { signUp } = useAuth();
+  const { alert } = useAlert();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -62,7 +63,7 @@ const SignUpScreen = () => {
 
     if (!result.ok) {
       setIsSubmitting(false);
-      Alert.alert("Sign up failed", result.error);
+      alert("Sign up failed", result.error);
       return;
     }
 
