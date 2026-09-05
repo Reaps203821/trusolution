@@ -1,10 +1,11 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -13,12 +14,16 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAppointments } from "../context/AppointmentContext";
 import { hapticSuccess } from "../lib/haptics";
 import { useAlert } from "../context/AlertContext";
+import { fetchAvailableSlots } from "../lib/therapists";
+import { useWellness } from "../context/WellnessContext";
+import { resolveDisplayName } from "../lib/displayName";
 
 export default function TherapistBookingScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const insets = useSafeAreaInsets();
   const { addAppointment } = useAppointments();
+  const { profile } = useWellness();
   const { alert } = useAlert();
 
   const therapist = route.params?.therapist || {
@@ -30,17 +35,34 @@ export default function TherapistBookingScreen() {
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   const [sessionType, setSessionType] = useState("Chat");
+  const [timeSlots, setTimeSlots] = useState([]);
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
 
-  const timeSlots = [
-    "9:00 AM",
-    "10:00 AM",
-    "11:30 AM",
-    "1:00 PM",
-    "3:00 PM",
-    "5:00 PM",
-  ];
+  useEffect(() => {
+    if (!selectedDate || !therapist.id) {
+      setTimeSlots([]);
+      return;
+    }
 
-  const sessionTypes = ["Chat", "Call", "In-Person"];
+    let isActive = true;
+    (async () => {
+      setIsLoadingSlots(true);
+      setSelectedTime("");
+      const slots = await fetchAvailableSlots(therapist.id, selectedDate);
+      if (isActive) {
+        setTimeSlots(slots);
+        setIsLoadingSlots(false);
+      }
+    })();
+
+    return () => {
+      isActive = false;
+    };
+  }, [selectedDate, therapist.id]);
+
+  const sessionTypes = therapist.sessionTypes?.length
+    ? therapist.sessionTypes
+    : ["Chat", "Call", "In-Person"];
 
   const markedDates = useMemo(
     () => ({
@@ -57,10 +79,16 @@ export default function TherapistBookingScreen() {
     [selectedDate],
   );
 
-  const canConfirm = Boolean(selectedDate && selectedTime && sessionType);
+  const canConfirm = Boolean(selectedDate && selectedTime && sessionType && therapist.id);
 
   const handleConfirmBooking = async () => {
     if (!canConfirm) {
+      if (!therapist.id) {
+        alert(
+          "Unable to book",
+          "This therapist profile couldn't be loaded. Please go back and try again.",
+        );
+      }
       return;
     }
 
@@ -69,12 +97,13 @@ export default function TherapistBookingScreen() {
       date: selectedDate,
       time: selectedTime,
       sessionType,
+      clientDisplayName: resolveDisplayName(profile, "Anonymous Client"),
     });
 
     if (!appointment) {
       alert(
         "Booking failed",
-        "We couldn't confirm your appointment. Please try again.",
+        "We couldn't send your request. Please try again.",
       );
       return;
     }
@@ -151,27 +180,39 @@ export default function TherapistBookingScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Available time slots</Text>
-          <View style={styles.optionGrid}>
-            {timeSlots.map((time) => {
-              const selected = selectedTime === time;
-              return (
-                <TouchableOpacity
-                  key={time}
-                  style={[styles.optionChip, selected && styles.optionChipActive]}
-                  onPress={() => setSelectedTime(time)}
-                >
-                  <Text
-                    style={[
-                      styles.optionText,
-                      selected && styles.optionTextActive,
-                    ]}
+          {!selectedDate ? (
+            <Text style={styles.helperText}>Pick a date to see open times.</Text>
+          ) : isLoadingSlots ? (
+            <View style={styles.slotsLoading}>
+              <ActivityIndicator color="#7A4B2F" />
+            </View>
+          ) : timeSlots.length === 0 ? (
+            <Text style={styles.helperText}>
+              No open times on this date. Try another day.
+            </Text>
+          ) : (
+            <View style={styles.optionGrid}>
+              {timeSlots.map((time) => {
+                const selected = selectedTime === time;
+                return (
+                  <TouchableOpacity
+                    key={time}
+                    style={[styles.optionChip, selected && styles.optionChipActive]}
+                    onPress={() => setSelectedTime(time)}
                   >
-                    {time}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+                    <Text
+                      style={[
+                        styles.optionText,
+                        selected && styles.optionTextActive,
+                      ]}
+                    >
+                      {time}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -215,7 +256,7 @@ export default function TherapistBookingScreen() {
           disabled={!canConfirm}
           onPress={handleConfirmBooking}
         >
-          <Text style={styles.buttonText}>Confirm Booking</Text>
+          <Text style={styles.buttonText}>Request Booking</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -310,6 +351,15 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#3D2B1F",
     marginBottom: 10,
+  },
+  helperText: {
+    fontSize: 13,
+    color: "#8A6A57",
+    paddingVertical: 6,
+  },
+  slotsLoading: {
+    paddingVertical: 20,
+    alignItems: "center",
   },
   calendarCard: {
     backgroundColor: "#FFF8EE",

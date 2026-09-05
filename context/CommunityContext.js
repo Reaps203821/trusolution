@@ -3,6 +3,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { supabase } from "../lib/supabase";
@@ -98,6 +99,47 @@ export function CommunityProvider({ children }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUserId, isAuthHydrated]);
+
+  // Live sync: new posts, comments, and likes from anyone show up without a
+  // manual refresh. Re-fetching (rather than patching state) keeps the
+  // like-count/comment-join logic in one place and is cheap for a feed this
+  // size.
+  const reloadTimeoutRef = useRef(null);
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    const debouncedReload = () => {
+      if (reloadTimeoutRef.current) clearTimeout(reloadTimeoutRef.current);
+      reloadTimeoutRef.current = setTimeout(() => {
+        loadPosts();
+      }, 400);
+    };
+
+    const channel = supabase
+      .channel(`community-feed-${currentUserId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "community_posts" },
+        debouncedReload,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "community_comments" },
+        debouncedReload,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "community_post_likes" },
+        debouncedReload,
+      )
+      .subscribe();
+
+    return () => {
+      if (reloadTimeoutRef.current) clearTimeout(reloadTimeoutRef.current);
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserId]);
 
   const displayName = (isAnonymous) => {
     if (isAnonymous) return "Anonymous";

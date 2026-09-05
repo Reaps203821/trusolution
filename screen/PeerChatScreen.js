@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -14,9 +14,55 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useChat } from "../context/ChatContext";
+import { useAlert } from "../context/AlertContext";
+
+// Self-contained simulated exchange used only for the therapist
+// pre-appointment placeholder chat - not backed by a database, since real
+// therapist messaging is a separate feature from real peer matching.
+function useSimulatedTherapistChat(peerName) {
+  const [messages, setMessages] = useState([
+    {
+      id: "intro",
+      text: `Hi, I'm ${peerName}. Feel free to share anything you'd like to discuss before our session.`,
+      sender: "peer",
+      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    },
+  ]);
+  const [isTyping, setIsTyping] = useState(false);
+
+  const sendMessage = (text) => {
+    const userMessage = {
+      id: `local-${Date.now()}`,
+      text,
+      sender: "user",
+      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    };
+    setMessages((prev) => [...prev, userMessage]);
+
+    const replyText = "Thanks for sharing - we'll cover this in your session.";
+    const typingDuration = Math.min(2800, 800 + replyText.length * 28);
+
+    setTimeout(() => setIsTyping(true), 350);
+    setTimeout(() => {
+      setIsTyping(false);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `local-reply-${Date.now()}`,
+          text: replyText,
+          sender: "peer",
+          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        },
+      ]);
+    }, 350 + typingDuration);
+  };
+
+  return { messages, isTyping, sendMessage };
+}
 
 export default function PeerChatScreen({ route }) {
   const navigation = useNavigation();
+  const { alert } = useAlert();
   const {
     conversationId,
     conversationStyle = "Both",
@@ -25,31 +71,35 @@ export default function PeerChatScreen({ route }) {
   } = route.params || {};
 
   const insets = useSafeAreaInsets();
+  const isPeer = chatType === "peer";
+
   const {
-    getConversation,
-    openConversation,
-    addMessage,
-    addReply,
+    otherName,
+    messages: realMessages,
+    loadConversation,
+    leaveConversation,
+    sendMessage: sendRealMessage,
+    endConversation,
+    reportConversation,
   } = useChat();
 
-  // Build a stable conversation id from the peer/therapist.
-  const resolvedId =
-    conversationId || `${chatType}-${peerName.replace(/\s+/g, "-").toLowerCase()}`;
+  const simulated = useSimulatedTherapistChat(peerName);
 
-  const conversation = getConversation(resolvedId);
   const [inputText, setInputText] = useState("");
-  const [isPeerTyping, setIsPeerTyping] = useState(false);
   const flatListRef = useRef();
 
-  // Ensure the conversation exists in state.
   useEffect(() => {
-    openConversation({
-      id: resolvedId,
-      peerName,
-      chatType,
-      conversationStyle,
-    });
-  }, [resolvedId, peerName, chatType, conversationStyle]);
+    if (isPeer && conversationId) {
+      loadConversation(conversationId);
+      return () => leaveConversation();
+    }
+    return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPeer, conversationId]);
+
+  const displayName = isPeer ? otherName || peerName : peerName;
+  const messages = isPeer ? realMessages : simulated.messages;
+  const isPeerTyping = isPeer ? false : simulated.isTyping;
 
   const handleBackPress = React.useCallback(() => {
     if (chatType === "therapist") {
@@ -81,60 +131,63 @@ export default function PeerChatScreen({ route }) {
 
   useEffect(() => {
     flatListRef.current?.scrollToEnd({ animated: false });
-  }, [conversation.messages.length, isPeerTyping]);
+  }, [messages.length, isPeerTyping]);
 
-  const statusLabel =
-    chatType === "therapist"
-      ? "Available now \u2022 Professional support"
-      : `Online \u2022 ${conversationStyle} style`;
-
-  const messages = conversation.messages || [];
-
-  const LISTENER_REPLIES = [
-    "I'm listening. Please continue...",
-    "Take your time, I'm here.",
-    "Mm, I hear you. Go on.",
-  ];
-  const ADVICE_REPLIES = [
-    "That makes sense. Tell me a little more about what happened.",
-    "Thank you for sharing that. How did that make you feel?",
-    "I appreciate you opening up. What do you think led to that?",
-  ];
+  const statusLabel = isPeer
+    ? `Online \u2022 ${conversationStyle} style`
+    : "Available now \u2022 Professional support";
 
   const sendMessage = () => {
     if (!inputText.trim()) {
       return;
     }
 
-    addMessage(resolvedId, {
-      text: inputText.trim(),
-      sender: "user",
-      time: new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    });
+    if (isPeer) {
+      sendRealMessage(conversationId, inputText.trim());
+    } else {
+      simulated.sendMessage(inputText.trim());
+    }
     setInputText("");
+  };
 
-    const pool =
-      conversationStyle === "Listener" ? LISTENER_REPLIES : ADVICE_REPLIES;
-    const replyText = pool[Math.floor(Math.random() * pool.length)];
-
-    // Simulate a human typing pace: a short pause before the indicator
-    // appears, then a duration roughly proportional to reply length.
-    const typingDuration = Math.min(
-      2800,
-      800 + replyText.length * 28,
+  const handleReport = () => {
+    alert(
+      "Report this conversation?",
+      "We'll review it for anything that goes against community guidelines.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Report",
+          style: "destructive",
+          onPress: async () => {
+            const ok = await reportConversation(conversationId);
+            alert(
+              ok ? "Thanks" : "Something went wrong",
+              ok
+                ? "We've received your report and will take a look."
+                : "Please try again.",
+            );
+          },
+        },
+      ],
     );
+  };
 
-    setTimeout(() => {
-      setIsPeerTyping(true);
-    }, 350);
-
-    setTimeout(() => {
-      setIsPeerTyping(false);
-      addReply(resolvedId, peerName, replyText);
-    }, 350 + typingDuration);
+  const handleEndChat = () => {
+    alert("End this chat?", "You can rate the conversation afterward.", [
+      { text: "Keep Chatting", style: "cancel" },
+      {
+        text: "End Chat",
+        style: "destructive",
+        onPress: async () => {
+          await endConversation(conversationId);
+          navigation.navigate("RatePeer", {
+            peerName: displayName,
+            conversationId,
+          });
+        },
+      },
+    ]);
   };
 
   const renderMessage = ({ item, index }) => {
@@ -149,7 +202,7 @@ export default function PeerChatScreen({ route }) {
             {showAvatar ? (
               <View style={styles.peerAvatar}>
                 <Text style={styles.peerAvatarText}>
-                  {peerName.charAt(0).toUpperCase()}
+                  {displayName.charAt(0).toUpperCase()}
                 </Text>
               </View>
             ) : null}
@@ -193,12 +246,12 @@ export default function PeerChatScreen({ route }) {
           <View style={styles.headerIdentity}>
             <View style={styles.headerAvatar}>
               <Text style={styles.headerAvatarText}>
-                {peerName.charAt(0).toUpperCase()}
+                {displayName.charAt(0).toUpperCase()}
               </Text>
             </View>
             <View style={styles.headerTextWrap}>
               <Text style={styles.peerName} numberOfLines={1}>
-                {peerName}
+                {displayName}
               </Text>
               <Text style={styles.peerStatus} numberOfLines={1}>
                 {statusLabel}
@@ -207,19 +260,13 @@ export default function PeerChatScreen({ route }) {
           </View>
 
           <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.iconButton}>
-              <Ionicons name="call-outline" size={20} color="#2D2418" />
-            </TouchableOpacity>
+            {isPeer && (
+              <TouchableOpacity style={styles.iconButton} onPress={handleReport}>
+                <Ionicons name="flag-outline" size={20} color="#2D2418" />
+              </TouchableOpacity>
+            )}
             {chatType !== "therapist" && (
-              <TouchableOpacity
-                style={styles.iconButton}
-                onPress={() =>
-                  navigation.navigate("RatePeer", {
-                    peerName,
-                    conversationId: resolvedId,
-                  })
-                }
-              >
+              <TouchableOpacity style={styles.iconButton} onPress={handleEndChat}>
                 <Ionicons name="star-outline" size={20} color="#2D2418" />
               </TouchableOpacity>
             )}
@@ -247,7 +294,7 @@ export default function PeerChatScreen({ route }) {
           <View style={styles.typingRow}>
             <View style={styles.peerAvatar}>
               <Text style={styles.peerAvatarText}>
-                {peerName.charAt(0).toUpperCase()}
+                {displayName.charAt(0).toUpperCase()}
               </Text>
             </View>
             <View style={styles.typingBubble}>
@@ -276,12 +323,6 @@ export default function PeerChatScreen({ route }) {
               onChangeText={setInputText}
               multiline
             />
-            <TouchableOpacity style={styles.composerIcon}>
-              <Ionicons name="attach-outline" size={22} color="#7B6A55" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.composerIcon}>
-              <Ionicons name="camera-outline" size={22} color="#7B6A55" />
-            </TouchableOpacity>
           </View>
 
           <TouchableOpacity

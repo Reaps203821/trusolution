@@ -8,31 +8,45 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-
-// A pool of realistic peer matches so each search can surface a peer.
-const peerPool = [
-  { name: "Alex", topic: "Anxiety Support" },
-  { name: "Jordan", topic: "Stress & Work" },
-  { name: "Sam", topic: "Relationship Advice" },
-  { name: "Riley", topic: "Grief & Loss" },
-  { name: "Casey", topic: "Self-esteem" },
-  { name: "Taylor", topic: "Family Matters" },
-];
-
-const buildConversationId = (peerName, topics) => {
-  const topicKey = (topics[0] || "peer").replace(/\s+/g, "-").toLowerCase();
-  return `peer-${peerName.toLowerCase()}-${topicKey}`;
-};
+import { useAuth } from "../context/AuthContext";
+import { useWellness } from "../context/WellnessContext";
+import {
+  requestPeerMatch,
+  subscribeToQueueMatch,
+  cancelPeerSearch,
+  fetchConversationSummary,
+} from "../lib/peerMatching";
+import { resolveDisplayName } from "../lib/displayName";
 
 export default function SearchingScreen({ route }) {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
+  const { currentUser } = useAuth();
+  const { profile } = useWellness();
   const { selectedTopics = [], conversationStyle = "Both" } =
     route.params || {};
-  const navigation = useNavigation();
+
   const rotationAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.3)).current;
-  const [peer, setPeer] = useState(null);
+  const [statusText, setStatusText] = useState("Searching for someone available...");
+  const [matchedName, setMatchedName] = useState(null);
+  const unsubscribeRef = useRef(null);
   const navigatedRef = useRef(false);
+  const currentUserId = currentUser?.id;
+
+  const goToChat = async (conversationId) => {
+    if (navigatedRef.current) return;
+    navigatedRef.current = true;
+
+    const summary = await fetchConversationSummary(conversationId, currentUserId);
+    navigation.replace("PeerChat", {
+      peerName: summary?.otherName || "Peer",
+      conversationId,
+      conversationStyle,
+      selectedTopics,
+      chatType: "peer",
+    });
+  };
 
   useEffect(() => {
     Animated.loop(
@@ -56,40 +70,65 @@ export default function SearchingScreen({ route }) {
         ]),
       ]),
     ).start();
-
-    // Simulate a real search: pick a match after a short delay, then
-    // automatically open the chat.
-    const searchTimer = setTimeout(() => {
-      const randomPeer = peerPool[Math.floor(Math.random() * peerPool.length)];
-      setPeer(randomPeer);
-    }, 1800);
-
-    return () => clearTimeout(searchTimer);
   }, []);
 
-  // Auto-transition to chat once a peer is found.
   useEffect(() => {
-    if (!peer || navigatedRef.current) {
-      return;
-    }
-    navigatedRef.current = true;
-    const conversationId = buildConversationId(peer.name, selectedTopics);
-    const peerName = `${peer.name} (${peer.topic})`;
-    navigation.replace("PeerChat", {
-      peerName,
-      conversationId,
-      conversationStyle,
-      selectedTopics,
-      chatType: "peer",
-    });
-  }, [peer, navigation, conversationStyle, selectedTopics]);
+    if (!currentUserId) return;
+
+    let isActive = true;
+
+    (async () => {
+      const displayName = resolveDisplayName(profile);
+      const { conversationId, error } = await requestPeerMatch({
+        topics: selectedTopics,
+        conversationStyle,
+        displayName,
+      });
+
+      if (!isActive) return;
+
+      if (error) {
+        setStatusText("Something went wrong. Please try again.");
+        return;
+      }
+
+      if (conversationId) {
+        setStatusText("Match found!");
+        goToChat(conversationId);
+        return;
+      }
+
+      // No one else waiting yet - listen for someone else's search to
+      // match with us.
+      setStatusText("Waiting for another person to join...");
+      unsubscribeRef.current = subscribeToQueueMatch(currentUserId, (matchedId) => {
+        if (!isActive) return;
+        setStatusText("Match found!");
+        goToChat(matchedId);
+      });
+    })();
+
+    return () => {
+      isActive = false;
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserId]);
 
   const rotation = rotationAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ["0deg", "360deg"],
   });
 
-  const cancelSearch = () => {
+  const cancelSearch = async () => {
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+    }
+    if (currentUserId) {
+      await cancelPeerSearch(currentUserId);
+    }
     navigation.goBack();
   };
 
@@ -103,18 +142,11 @@ export default function SearchingScreen({ route }) {
       <Animated.View
         style={[
           styles.loaderContainer,
-          {
-            transform: [{ rotate: rotation }],
-          },
+          { transform: [{ rotate: rotation }] },
         ]}
       >
         <Animated.View
-          style={[
-            styles.loaderDot,
-            {
-              transform: [{ scale: scaleAnim }],
-            },
-          ]}
+          style={[styles.loaderDot, { transform: [{ scale: scaleAnim }] }]}
         />
         <View style={styles.loaderRing} />
       </Animated.View>
@@ -139,17 +171,7 @@ export default function SearchingScreen({ route }) {
         </View>
       )}
 
-      <Text style={styles.subtitle}>
-        {conversationStyle} style {"\u2022"} Checking available peers
-      </Text>
-
-      {peer && (
-        <View style={styles.matchNotice}>
-          <Text style={styles.matchNoticeText}>
-            Match found: {peer.name} ({peer.topic})
-          </Text>
-        </View>
-      )}
+      <Text style={styles.subtitle}>{statusText}</Text>
 
       <TouchableOpacity style={styles.cancelBtn} onPress={cancelSearch}>
         <Text style={styles.cancelText}>Cancel Search</Text>
@@ -238,20 +260,6 @@ const styles = StyleSheet.create({
     color: "#8B7355",
     fontSize: 13,
     marginLeft: 8,
-  },
-  matchNotice: {
-    backgroundColor: "#E7F4E1",
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#256D3C",
-    marginTop: 10,
-  },
-  matchNoticeText: {
-    color: "#256D3C",
-    fontWeight: "700",
-    fontSize: 14,
   },
   cancelBtn: {
     backgroundColor: "#F7EBDD",

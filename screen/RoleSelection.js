@@ -44,7 +44,7 @@ const RoleSelection = () => {
       }
 
       if (selectedRole === "therapist") {
-        navigation.replace("TherapistComingSoon");
+        navigation.replace("TherapistProfileSetup");
       }
     } catch (error) {
       console.log("Error saving user role:", error);

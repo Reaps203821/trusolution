@@ -24,7 +24,11 @@ import SharingModeScreen from "./screen/SharingModeScreen";
 // import FocusModeScreen from "./screen/FocusModeScreen";
 import TherapistScreen from "./screen/TherapistScreen";
 import RoleSelectionScreen from "./screen/RoleSelection";
-import TherapistComingSoonScreen from "./screen/TherapistComingSoonScreen";
+import TherapistProfileSetupScreen from "./screen/TherapistProfileSetupScreen";
+import TherapistTabNavigator from "./TherapistTabNavigator";
+import TherapistChatScreen from "./screen/TherapistChatScreen";
+import TherapistSessionDetailScreen from "./screen/TherapistSessionDetailScreen";
+import TherapistAvailabilityScreen from "./screen/TherapistAvailabilityScreen";
 import TherapistProfileScreen from "./screen/TherapistProfileScreen";
 
 import TherapistBookingScreen from "./screen/TherapistBookingScreen";
@@ -45,6 +49,7 @@ import CrisisResourcesScreen from "./screen/CrisisResourcesScreen";
 import TabNavigator from "./TabNavigator";
 import { CommunityProvider } from "./context/CommunityContext";
 import { AppointmentProvider } from "./context/AppointmentContext";
+import { TherapistProvider } from "./context/TherapistContext";
 import { WellnessProvider } from "./context/WellnessContext";
 import { AuthProvider } from "./context/AuthContext";
 import { ChatProvider } from "./context/ChatContext";
@@ -62,6 +67,7 @@ export default function App() {
           <ChatProvider>
             <CommunityProvider>
               <AppointmentProvider>
+                <TherapistProvider>
                 <NavigationContainer>
                   <StatusBar style="auto" />
                   <Stack.Navigator
@@ -90,8 +96,24 @@ export default function App() {
                       component={RoleSelectionScreen}
                     />
                     <Stack.Screen
-                      name="TherapistComingSoon"
-                      component={TherapistComingSoonScreen}
+                      name="TherapistProfileSetup"
+                      component={TherapistProfileSetupScreen}
+                    />
+                    <Stack.Screen
+                      name="TherapistTabs"
+                      component={TherapistTabNavigator}
+                    />
+                    <Stack.Screen
+                      name="TherapistChat"
+                      component={TherapistChatScreen}
+                    />
+                    <Stack.Screen
+                      name="TherapistSessionDetail"
+                      component={TherapistSessionDetailScreen}
+                    />
+                    <Stack.Screen
+                      name="TherapistAvailability"
+                      component={TherapistAvailabilityScreen}
                     />
 
                     <Stack.Screen
@@ -212,6 +234,7 @@ export default function App() {
                     />
                   </Stack.Navigator>
                 </NavigationContainer>
+                </TherapistProvider>
               </AppointmentProvider>
             </CommunityProvider>
           </ChatProvider>

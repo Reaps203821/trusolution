@@ -78,7 +78,17 @@ const handleSignIn = async () => {
     }
 
     if (profileRow?.role === "therapist") {
-      navigation.replace("TherapistComingSoon");
+      const { data: therapistRow } = await supabase
+        .from("therapist_profiles")
+        .select("id, full_name")
+        .eq("id", result.user.id)
+        .maybeSingle();
+
+      if (therapistRow?.full_name) {
+        navigation.replace("TherapistTabs");
+      } else {
+        navigation.replace("TherapistProfileSetup");
+      }
       return;
     }
 

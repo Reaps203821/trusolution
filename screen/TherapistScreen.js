@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   Pressable,
   StyleSheet,
@@ -11,66 +12,9 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
+import { fetchTherapists } from "../lib/therapists";
 
 const filters = ["All", "Anxiety", "Trauma", "Relationships", "Focus"];
-
-const therapists = [
-  {
-    id: "1",
-    name: "Dr. Sarah Johnson",
-    specialty: "Anxiety & Stress",
-    rating: 4.9,
-    sessions: 150,
-    nextSlot: "Today, 4:30 PM",
-    price: "$45/session",
-    availability: "Available now",
-    tone: "Calm, practical support",
-  },
-  {
-    id: "2",
-    name: "Dr. Michael Chen",
-    specialty: "Depression & Mood",
-    rating: 4.8,
-    sessions: 200,
-    nextSlot: "Tomorrow, 10:00 AM",
-    price: "$50/session",
-    availability: "Next opening soon",
-    tone: "Warm, structured sessions",
-  },
-  {
-    id: "3",
-    name: "Dr. Emily Rodriguez",
-    specialty: "Relationship Issues",
-    rating: 5.0,
-    sessions: 120,
-    nextSlot: "Today, 6:00 PM",
-    price: "$55/session",
-    availability: "Available today",
-    tone: "Empathetic communication coach",
-  },
-  {
-    id: "4",
-    name: "Dr. David Kim",
-    specialty: "Trauma & PTSD",
-    rating: 4.7,
-    sessions: 180,
-    nextSlot: "Tomorrow, 2:15 PM",
-    price: "$60/session",
-    availability: "Limited slots",
-    tone: "Grounding, trauma-informed care",
-  },
-  {
-    id: "5",
-    name: "Dr. Lisa Patel",
-    specialty: "ADHD & Focus",
-    rating: 4.9,
-    sessions: 95,
-    nextSlot: "Today, 5:15 PM",
-    price: "$48/session",
-    availability: "Available today",
-    tone: "Action-oriented and supportive",
-  },
-];
 
 const getInitials = (name) =>
   name
@@ -84,6 +28,29 @@ const TherapistScreen = () => {
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("All");
+  const [therapists, setTherapists] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isActive = true;
+    (async () => {
+      setIsLoading(true);
+      const result = await fetchTherapists();
+      if (isActive) {
+        setTherapists(result);
+        setIsLoading(false);
+      }
+    })();
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  const averageRating = useMemo(() => {
+    if (therapists.length === 0) return "—";
+    const sum = therapists.reduce((acc, t) => acc + (t.rating || 0), 0);
+    return (sum / therapists.length).toFixed(1);
+  }, [therapists]);
 
   const filteredTherapists = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -93,7 +60,7 @@ const TherapistScreen = () => {
         !query ||
         therapist.name.toLowerCase().includes(query) ||
         therapist.specialty.toLowerCase().includes(query) ||
-        therapist.tone.toLowerCase().includes(query);
+        (therapist.bio || "").toLowerCase().includes(query);
 
       const matchesFilter =
         selectedFilter === "All" ||
@@ -112,8 +79,8 @@ const TherapistScreen = () => {
             <Text style={styles.heroBadgeText}>Verified professionals</Text>
           </View>
           <View style={styles.heroMiniStat}>
-            <Text style={styles.heroMiniStatValue}>5</Text>
-            <Text style={styles.heroMiniStatLabel}>Top matches</Text>
+            <Text style={styles.heroMiniStatValue}>{therapists.length}</Text>
+            <Text style={styles.heroMiniStatLabel}>Available</Text>
           </View>
         </View>
 
@@ -125,12 +92,12 @@ const TherapistScreen = () => {
 
         <View style={styles.heroMetricsRow}>
           <View style={styles.metricCard}>
-            <Text style={styles.metricValue}>4.9</Text>
+            <Text style={styles.metricValue}>{averageRating}</Text>
             <Text style={styles.metricLabel}>Avg. rating</Text>
           </View>
           <View style={styles.metricCard}>
-            <Text style={styles.metricValue}>Today</Text>
-            <Text style={styles.metricLabel}>Fastest slot</Text>
+            <Text style={styles.metricValue}>{therapists.length}</Text>
+            <Text style={styles.metricLabel}>Therapists</Text>
           </View>
           <View style={styles.metricCard}>
             <Text style={styles.metricValue}>1:1</Text>
@@ -229,7 +196,9 @@ const TherapistScreen = () => {
             ) : null}
           </View>
           <Text style={styles.specialty}>{item.specialty}</Text>
-          <Text style={styles.tone}>{item.tone}</Text>
+          <Text style={styles.tone} numberOfLines={2}>
+            {item.bio || item.credentials || "Here to support you."}
+          </Text>
         </View>
       </View>
 
@@ -238,23 +207,29 @@ const TherapistScreen = () => {
           <Ionicons name="star" size={14} color="#B7791F" />
           <Text style={styles.metaText}>{item.rating}</Text>
         </View>
-        <View style={styles.metaPill}>
-          <Ionicons name="people" size={14} color="#7A4B2F" />
-          <Text style={styles.metaText}>{item.sessions} sessions</Text>
-        </View>
-        <View style={styles.metaPill}>
-          <Ionicons name="wallet" size={14} color="#7A4B2F" />
-          <Text style={styles.metaText}>{item.price}</Text>
-        </View>
+        {item.yearsExperience ? (
+          <View style={styles.metaPill}>
+            <Ionicons name="ribbon" size={14} color="#7A4B2F" />
+            <Text style={styles.metaText}>{item.yearsExperience} yrs exp</Text>
+          </View>
+        ) : null}
+        {item.credentials ? (
+          <View style={styles.metaPill}>
+            <Ionicons name="school" size={14} color="#7A4B2F" />
+            <Text style={styles.metaText}>{item.credentials}</Text>
+          </View>
+        ) : null}
       </View>
 
       <View style={styles.cardFooter}>
         <View>
           <View style={styles.statusRow}>
             <View style={styles.statusDot} />
-            <Text style={styles.statusText}>{item.availability}</Text>
+            <Text style={styles.statusText}>Accepting new clients</Text>
           </View>
-          <Text style={styles.nextSlotText}>Next slot: {item.nextSlot}</Text>
+          <Text style={styles.nextSlotText}>
+            {(item.sessionTypes || []).join(" · ") || "Chat · Call"}
+          </Text>
         </View>
 
         <View style={styles.ctaButton}>
@@ -300,19 +275,25 @@ const TherapistScreen = () => {
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={filteredTherapists}
-        keyExtractor={(item) => item.id}
-        renderItem={renderTherapist}
-        ListHeaderComponent={renderHeader}
-        ListEmptyComponent={renderEmpty}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={[
-          styles.contentContainer,
-          { paddingBottom: 24 + insets.bottom },
-        ]}
-      />
+      {isLoading ? (
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator color="#7A4B2F" />
+        </View>
+      ) : (
+        <FlatList
+          data={filteredTherapists}
+          keyExtractor={(item) => item.id}
+          renderItem={renderTherapist}
+          ListHeaderComponent={renderHeader}
+          ListEmptyComponent={renderEmpty}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={[
+            styles.contentContainer,
+            { paddingBottom: 24 + insets.bottom },
+          ]}
+        />
+      )}
     </View>
   );
 };
@@ -355,6 +336,10 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: 18,
+  },
+  loadingWrap: {
+    paddingTop: 60,
+    alignItems: "center",
   },
   heroCard: {
     backgroundColor: "#7A4B2F",

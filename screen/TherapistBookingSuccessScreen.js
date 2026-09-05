@@ -37,8 +37,11 @@ export default function TherapistBookingSuccessScreen() {
         <View style={styles.iconWrap}>
           <Ionicons name="checkmark" size={34} color="#256D3C" />
         </View>
-        <Text style={styles.title}>Session Booked</Text>
-        <Text style={styles.subtitle}>Your appointment is confirmed.</Text>
+        <Text style={styles.title}>Request Sent</Text>
+        <Text style={styles.subtitle}>
+          Your session request has been sent — you'll be notified once the
+          therapist confirms.
+        </Text>
 
         <View style={styles.infoCard}>
           <Text style={styles.infoLine}>{appointment.therapist.name}</Text>

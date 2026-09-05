@@ -30,10 +30,13 @@ const rowToAppointment = (row) => ({
   id: row.id,
   bookingId: row.booking_id,
   therapist: row.therapist,
+  therapistId: row.therapist_id,
+  clientDisplayName: row.client_display_name,
   date: row.date,
   time: row.time,
   sessionType: row.session_type,
   status: row.status,
+  declineReason: row.decline_reason,
   createdAt: row.created_at,
   reminder: {
     dayBefore: row.reminder_day_before,
@@ -91,17 +94,59 @@ export function AppointmentProvider({ children }) {
     };
   }, [currentUserId, isAuthHydrated]);
 
-  const addAppointment = async ({ therapist, date, time, sessionType }) => {
+  // Live sync: reflect status changes (e.g. a therapist accepting or
+  // declining) without needing to leave and re-enter the screen.
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    const channel = supabase
+      .channel(`appointments-client-${currentUserId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "appointments",
+          filter: `user_id=eq.${currentUserId}`,
+        },
+        (payload) => {
+          if (payload.eventType === "DELETE") {
+            setAppointments((prev) =>
+              prev.filter((a) => a.id !== payload.old.id),
+            );
+            return;
+          }
+
+          const updated = rowToAppointment(payload.new);
+          setAppointments((prev) => {
+            const exists = prev.some((a) => a.id === updated.id);
+            if (exists) {
+              return prev.map((a) => (a.id === updated.id ? updated : a));
+            }
+            return [updated, ...prev];
+          });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUserId]);
+
+  const addAppointment = async ({ therapist, date, time, sessionType, clientDisplayName }) => {
     const { data, error } = await supabase
       .from("appointments")
       .insert({
         user_id: currentUserId,
         booking_id: buildBookingId(),
         therapist,
+        therapist_id: therapist?.id || null,
+        client_display_name: clientDisplayName || null,
         date,
         time,
         session_type: sessionType,
-        status: "Confirmed",
+        status: "Pending",
         reminder_day_before: true,
         reminder_one_hour_before: true,
       })

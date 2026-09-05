@@ -4,6 +4,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppointments } from "../context/AppointmentContext";
+import { useTherapist } from "../context/TherapistContext";
+import { useWellness } from "../context/WellnessContext";
+import { useAuth } from "../context/AuthContext";
+import { resolveDisplayName } from "../lib/displayName";
 
 export default function AppointmentDetailsScreen() {
   const navigation = useNavigation();
@@ -16,6 +20,10 @@ export default function AppointmentDetailsScreen() {
     cancelAppointment,
     rescheduleAppointment,
   } = useAppointments();
+  const { getOrCreateConversation } = useTherapist();
+  const { profile } = useWellness();
+  const { currentUser } = useAuth();
+  const [isOpeningChat, setIsOpeningChat] = React.useState(false);
 
   const appointment = getAppointmentById(appointmentId) || upcomingAppointment;
 
@@ -87,16 +95,37 @@ export default function AppointmentDetailsScreen() {
           <Text style={styles.sectionTitle}>Actions</Text>
           <TouchableOpacity
             style={[styles.primaryButton, isCanceled && styles.disabledButton]}
-            disabled={isCanceled}
-            onPress={() =>
-              navigation.navigate("PeerChat", {
-                peerName: appointment.therapist.name,
-                conversationStyle: "Professional support",
-                chatType: "therapist",
-              })
-            }
+            disabled={isCanceled || isOpeningChat}
+            onPress={async () => {
+              if (!appointment.therapistId) {
+                navigation.navigate("PeerChat", {
+                  peerName: appointment.therapist.name,
+                  conversationStyle: "Professional support",
+                  chatType: "therapist",
+                });
+                return;
+              }
+
+              setIsOpeningChat(true);
+              const conversationId = await getOrCreateConversation({
+                therapistId: appointment.therapistId,
+                clientId: currentUser?.id,
+                therapistDisplayName: appointment.therapist?.name,
+                clientDisplayName: resolveDisplayName(profile, "Anonymous Client"),
+              });
+              setIsOpeningChat(false);
+
+              if (conversationId) {
+                navigation.navigate("TherapistChat", {
+                  conversationId,
+                  otherName: appointment.therapist?.name || "Therapist",
+                });
+              }
+            }}
           >
-            <Text style={styles.primaryButtonText}>Message Therapist</Text>
+            <Text style={styles.primaryButtonText}>
+              {isOpeningChat ? "Opening..." : "Message Therapist"}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
