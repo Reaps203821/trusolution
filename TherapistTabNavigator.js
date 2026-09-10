@@ -8,6 +8,7 @@ import TherapistSessionsScreen from "./screen/TherapistSessionsScreen";
 import TherapistMessagesScreen from "./screen/TherapistMessagesScreen";
 import TherapistClientsScreen from "./screen/TherapistClientsScreen";
 import TherapistProfileTabScreen from "./screen/TherapistProfileTabScreen";
+import { hapticLight } from "./lib/haptics";
 
 const Tab = createBottomTabNavigator();
 
@@ -17,6 +18,9 @@ export default function TherapistTabNavigator() {
 
   return (
     <Tab.Navigator
+      screenListeners={{
+        tabPress: () => hapticLight(),
+      }}
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
