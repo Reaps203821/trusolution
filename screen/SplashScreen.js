@@ -3,6 +3,9 @@ import { View, Image, Text, StyleSheet, StatusBar } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
+
+const MIN_SPLASH_MS = 2000;
 
 const SplashScreen = () => {
   const navigation = useNavigation();
@@ -11,18 +14,68 @@ const SplashScreen = () => {
 
   useEffect(() => {
     if (!isHydrated) {
-      return;
+      return undefined;
     }
 
-    const timer = setTimeout(() => {
-      if (currentUser) {
-        navigation.replace("MainTabs");
-      } else {
-        navigation.replace("Onboarding1");
-      }
-    }, 2000);
+    let isActive = true;
 
-    return () => clearTimeout(timer);
+    const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    const resolveDestination = async () => {
+      if (!currentUser) {
+        return "Onboarding1";
+      }
+
+      try {
+        const { data: profileRow, error } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", currentUser.id)
+          .maybeSingle();
+
+        if (error) {
+          console.log("Error reading user role:", error.message);
+          return "RoleSelection";
+        }
+
+        if (profileRow?.role === "user") {
+          return "MainTabs";
+        }
+
+        if (profileRow?.role === "therapist") {
+          const { data: therapistRow } = await supabase
+            .from("therapist_profiles")
+            .select("id, full_name")
+            .eq("id", currentUser.id)
+            .maybeSingle();
+
+          return therapistRow?.full_name
+            ? "TherapistTabs"
+            : "TherapistProfileSetup";
+        }
+
+        // No role chosen yet
+        return "RoleSelection";
+      } catch (err) {
+        console.log("Error reading user role:", err);
+        return "RoleSelection";
+      }
+    };
+
+    (async () => {
+      const [destination] = await Promise.all([
+        resolveDestination(),
+        wait(MIN_SPLASH_MS),
+      ]);
+
+      if (isActive) {
+        navigation.replace(destination);
+      }
+    })();
+
+    return () => {
+      isActive = false;
+    };
   }, [currentUser, isHydrated, navigation]);
 
   return (

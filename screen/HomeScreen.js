@@ -14,6 +14,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useAppointments } from "../context/AppointmentContext";
 import { useWellness } from "../context/WellnessContext";
+import { useTherapist } from "../context/TherapistContext";
+import { useAuth } from "../context/AuthContext";
+import { resolveDisplayName } from "../lib/displayName";
 
 const moods = [
   { id: "calm", emoji: "\u{1F60A}" },
@@ -68,7 +71,10 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { upcomingAppointment } = useAppointments();
   const { moodEntries, journalEntries, profile } = useWellness();
+  const { getOrCreateConversation } = useTherapist();
+  const { currentUser } = useAuth();
   const [selectedMood, setSelectedMood] = useState("calm");
+  const [isOpeningChat, setIsOpeningChat] = useState(false);
   const latestMoodEntry = moodEntries[0];
   const displayName = profile.fullName.trim() || "there";
 
@@ -117,6 +123,37 @@ export default function HomeScreen() {
     }
 
     navigation.navigate(action);
+  };
+
+  const openTherapistMessage = async () => {
+    if (!upcomingAppointment) return;
+
+    // Legacy appointments without a linked therapist account fall back
+    // to the lightweight pre-session chat.
+    if (!upcomingAppointment.therapistId) {
+      navigation.navigate("PeerChat", {
+        peerName: upcomingAppointment.therapist.name,
+        conversationStyle: "Professional support",
+        chatType: "therapist",
+      });
+      return;
+    }
+
+    setIsOpeningChat(true);
+    const conversationId = await getOrCreateConversation({
+      therapistId: upcomingAppointment.therapistId,
+      clientId: currentUser?.id,
+      therapistDisplayName: upcomingAppointment.therapist?.name,
+      clientDisplayName: resolveDisplayName(profile, "Anonymous Client"),
+    });
+    setIsOpeningChat(false);
+
+    if (conversationId) {
+      navigation.navigate("TherapistChat", {
+        conversationId,
+        otherName: upcomingAppointment.therapist?.name || "Therapist",
+      });
+    }
   };
 
   return (
@@ -346,16 +383,11 @@ export default function HomeScreen() {
             <View style={styles.upcomingActionsRow}>
               <TouchableOpacity
                 style={styles.upcomingPrimaryButton}
-                onPress={() =>
-                  navigation.navigate("PeerChat", {
-                    peerName: upcomingAppointment.therapist.name,
-                    conversationStyle: "Professional support",
-                    chatType: "therapist",
-                  })
-                }
+                disabled={isOpeningChat}
+                onPress={openTherapistMessage}
               >
                 <Text style={styles.upcomingPrimaryButtonText}>
-                  Message therapist
+                  {isOpeningChat ? "Opening..." : "Message therapist"}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
