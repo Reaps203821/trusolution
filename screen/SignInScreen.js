@@ -101,25 +101,29 @@ const handleSignIn = async () => {
     setIsSubmitting(false);
   }
 };
+const handleForgotSubmit = async () => {
+  if (!forgotEmail.trim() || !validateEmail(forgotEmail)) {
+    setForgotError("Please enter a valid email address.");
+    return;
+  }
 
-  const handleForgotSubmit = () => {
-    if (!forgotEmail.trim() || !validateEmail(forgotEmail)) {
-      setForgotError("Please enter a valid email address.");
-      return;
-    }
+  setForgotError("");
 
-    const result = forgotPassword({ email: forgotEmail });
+  const result = await forgotPassword({
+    email: forgotEmail.trim(),
+  });
 
-    if (!result.ok) {
-      setForgotError(result.error);
-      return;
-    }
+  if (!result.ok) {
+    setForgotError(result.error);
+    return;
+  }
 
-    setShowForgot(false);
-    setForgotEmail("");
-    setForgotError("");
-    alert("Reset email sent", result.message);
-  };
+  setShowForgot(false);
+  setForgotEmail("");
+  setForgotError("");
+
+  alert("Reset email sent", result.message);
+};
 
   return (
     <>

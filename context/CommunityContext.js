@@ -176,6 +176,8 @@ export function CommunityProvider({ children }) {
 
     const wasLiked = post.liked;
 
+    // Optimistic update — instantly reflects the tap while the real
+    // (atomic, server-side) toggle runs in the background.
     setPosts((prev) =>
       prev.map((p) =>
         p.id === postId
@@ -188,32 +190,32 @@ export function CommunityProvider({ children }) {
       ),
     );
 
-    if (wasLiked) {
-      const { error } = await supabase
-        .from("community_post_likes")
-        .delete()
-        .eq("post_id", postId)
-        .eq("user_id", currentUserId);
-      if (!error) {
-        await supabase
-          .from("community_posts")
-          .update({ like_count: Math.max(0, post.likes - 1) })
-          .eq("id", postId);
-      } else {
-        console.warn("Unable to unlike post", error.message);
-      }
-    } else {
-      const { error } = await supabase
-        .from("community_post_likes")
-        .insert({ post_id: postId, user_id: currentUserId });
-      if (!error) {
-        await supabase
-          .from("community_posts")
-          .update({ like_count: post.likes + 1 })
-          .eq("id", postId);
-      } else {
-        console.warn("Unable to like post", error.message);
-      }
+    const { data, error } = await supabase.rpc("toggle_post_like", {
+      p_post_id: postId,
+    });
+
+    if (error) {
+      console.warn("Unable to toggle like", error.message);
+      // Roll back the optimistic update since the server call failed.
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId ? { ...p, liked: wasLiked, likes: post.likes } : p,
+        ),
+      );
+      return;
+    }
+
+    // Reconcile with the authoritative count/state the function returned,
+    // in case another like/unlike landed in between.
+    const result = Array.isArray(data) ? data[0] : data;
+    if (result) {
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId
+            ? { ...p, liked: result.liked, likes: result.like_count }
+            : p,
+        ),
+      );
     }
   };
 

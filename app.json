@@ -12,9 +12,11 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.trusolution.app"
     },
     "android": {
+      "package": "com.trusolution.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -25,6 +27,15 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "TruSolution needs access to your photos so you can set a profile picture."
+        }
+      ],
+      "expo-notifications"
+    ],
     "extra": {
       "eas": {
         "projectId": "6f9b593b-c8e5-4e46-85cc-57fa6b4bbf45"
